@@ -250,3 +250,41 @@ Task: QA sweep + new features (integrations section, ? shortcuts overlay, scroll
 - **Sticky CTA overlaps integrations bottom row** — the VLM noted the sticky "Launch demo" bar partially obscures the bottom integration tiles when scrolled to that section. This is expected (the sticky CTA is designed to persist), but could add a bottom-padding to the integrations section when the sticky CTA is visible. Low priority.
 - **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach for footer wordmark. Low priority.
 - **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a "blog/resources" teaser section with 3 article cards, (c) add a "stats in context" mini-section explaining what each trust-bar number means, (d) add a dedicated changelog/what's-new page or modal triggered by the nav badge, (e) add subtle parallax to the hero ambient layers on scroll, (f) add a "compare with alternatives" section naming specific competitor products, (g) add a newsletter signup in the footer, (h) add micro-animations to the pricing cards (hover lift + glow).
+
+---
+Task ID: 7
+Agent: orchestrator (cron webDevReview)
+Task: QA sweep + new features (blog section, footer newsletter, changelog modal) + styling polish (pricing card micro-animations, hero parallax).
+
+## Current project status / assessment
+- Project stable from round 6: 0 console errors, all APIs 200, lint clean, 13 sections render, all interactive features working.
+- QA confirmed: full page scroll (top→bottom→top) with 0 errors. All sections, nav (with Security + What's new), footer, command palette, mobile menu, back-to-top, sticky CTA, shortcuts overlay present.
+
+## Completed modifications / verification results
+
+### New features
+1. **Blog / field notes section** (`blog.tsx`) — New section with 3 article cards: "The 3-way match is the most expensive cheap process in AP", "From NetSuite export to prescription in 4 minutes", "Dashboards describe. That's the ceiling, not the floor." Each card has a category badge, title, excerpt, read time, date, and a "Read" link. Uses card-glow hover + top accent line. Left-aligned SectionHeading with "All posts" link. Inserted between Integrations and Testimonial. VLM confirmed: "3 article cards with category badges, titles, excerpts, read times. All posts link present."
+2. **Footer newsletter signup** (`footer.tsx` rewrite to client component) — Added a newsletter strip at the bottom of the footer with a Mail icon, "The Cadence field note" title, "One sharp operations take, every other week" subtext, email input + Subscribe button. Calls POST /api/subscribe with source "footer-newsletter". Shows "You're subscribed." success state. Uses toast for feedback. Verified: filled test@northwind.co → submitted → Prisma INSERT logged → "You're subscribed" shown.
+3. **Changelog modal** (`changelog.tsx` + `ChangelogProvider` context) — The nav "What's new" badge is now a button (not a link) that opens a modal via React context (no prop drilling). Modal shows 3 change entries (New/Faster/Security tags) with icon, tag badge, date, title, detail. Closing CTA: "Get access to try these." Page wrapped in `<ChangelogProvider>`. Verified: clicked "What's new" → modal opened with "What's new in Cadence" title, 3 change entries.
+
+### Styling enhancements
+4. **Pricing card micro-animations** (`pricing.tsx`) — All 3 pricing cards now have: card-glow (cursor-tracking radial), hover:-translate-y-1 lift, hover shadow deepening, hover:border-foreground/25 on non-primary cards. The Team card keeps its primary highlight. VLM confirmed: "3 tiers, Most popular badge, clean, no defects."
+5. **Hero ambient parallax** (`hero.tsx`) — Added `useScroll` + `useTransform` to drive parallax on the 3 ambient layers: bg-grid drifts +80px, glow-radial drifts +50px, halo-conic drifts +120px over the first 600px of scroll. Creates depth as the user scrolls past the hero. The ambient layers move slower than content, giving a layered 3D feel.
+6. **Command palette expanded** — Added "Field notes" (#blog) to the ⌘K palette nav items (now 10 items).
+7. **Footer link updates** — Footer Product column now includes "Integrations", Company column links "Security" to #security, Resources column links "Field notes" to #blog. Theme toggle + ⌘K/? hints retained.
+
+### Verification (agent-browser + VLM)
+- 0 console errors across full scroll session (hooked console.error, scrolled top→bottom→top, 0 errors).
+- Blog section: found via #blog id, VLM confirms "3 article cards with category badges, titles, excerpts, read times. All posts link present." ✓
+- Newsletter: form present (email + submit), filled test@northwind.co → submitted → Prisma INSERT logged → "You're subscribed" success state. ✓
+- Changelog modal: clicked "What's new" → dialog opened "What's new in Cadence", 3 change entries. ✓
+- Pricing: VLM confirms "3 tiers, Most popular badge, clean, no defects." ✓
+- Hero parallax: useScroll/useTransform wired to 3 ambient motion.div layers (no errors). ✓
+- Command palette: 10 nav items (added Field notes). ✓
+- Lint: clean (0 errors, 0 warnings). ✓
+
+## Unresolved issues / risks + next-phase recommendations
+- **Sticky CTA still overlaps content near bottom** — the VLM noted the sticky "Launch demo" bar partially obscures bottom rows of some sections when scrolled. This is by design (persistent conversion), but a bottom-padding compensation could be added. Low priority.
+- **Hero parallax is subtle** — the ambient layers drift but the effect is only visible during the first 600px of scroll. Could extend the range or add content parallax for more drama, but subtle is on-brand for Linear/Vercel aesthetics.
+- **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach. Low priority.
+- **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a "stats in context" mini-section explaining what each trust-bar number means, (c) add a "compare with alternatives" section naming specific competitor products, (d) add a testimonials carousel (multiple quotes instead of one), (e) add a "glossary" popover for technical terms (e.g. "3-way match"), (f) add a roadmap teaser section, (g) add a contact/sales form for the Scale tier, (h) add micro-interactions to the FAQ accordion (smooth height + chevron rotate).

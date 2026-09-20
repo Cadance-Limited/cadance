@@ -39,6 +39,7 @@ const navItems = [
   { label: "Live demo", href: "#demo" },
   { label: "Built for", href: "#use-cases" },
   { label: "Integrations", href: "#integrations" },
+  { label: "Field notes", href: "#blog" },
   { label: "Security & compliance", href: "#security" },
   { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },

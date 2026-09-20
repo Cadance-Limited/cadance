@@ -72,11 +72,16 @@ export function Pricing() {
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.5, delay: i * 0.08 }}
               className={cn(
-                "relative flex flex-col rounded-2xl border bg-card p-6 sm:p-7",
+                "card-glow group relative flex flex-col overflow-hidden rounded-2xl border bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_-28px_oklch(0_0_0/0.45)] sm:p-7",
                 t.primary
                   ? "border-foreground/30 shadow-[0_24px_60px_-30px_oklch(0.985_0_0/0.25)]"
-                  : "border-border",
+                  : "border-border hover:border-foreground/25",
               )}
+              onMouseMove={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+                e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+              }}
             >
               {t.primary ? (
                 <span className="absolute -top-3 left-6 inline-flex items-center gap-1.5 rounded-full border border-cadence/30 bg-cadence/10 px-2.5 py-1 text-[11px] font-medium text-cadence">

@@ -15,6 +15,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useChangelog } from "./changelog";
 
 const links = [
   { label: "Product", href: "#features" },
@@ -28,6 +29,7 @@ export function Nav() {
   const [scrolled, setScrolled] = React.useState(false);
   const [active, setActive] = React.useState<string>("");
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const changelog = useChangelog();
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, {
     stiffness: 120,
@@ -81,8 +83,9 @@ export function Nav() {
           <Link href="/" className="group flex items-center" aria-label="Cadence home">
             <Logo />
           </Link>
-          <a
-            href="#features"
+          <button
+            type="button"
+            onClick={() => changelog?.open()}
             className="hidden items-center gap-1.5 rounded-full border border-border bg-secondary/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground md:inline-flex"
           >
             <span className="relative flex h-1.5 w-1.5">
@@ -90,7 +93,7 @@ export function Nav() {
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cadence" />
             </span>
             What&apos;s new
-          </a>
+          </button>
         </div>
 
         {/* desktop links with active highlighting */}

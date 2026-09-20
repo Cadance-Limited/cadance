@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Check, ChevronDown, FileText, Sparkles, Zap } from "lucide-react";
 import { Eyebrow } from "./section-heading";
 import { useWaitlistCount } from "@/hooks/use-waitlist-count";
@@ -15,12 +15,17 @@ const reasoningSteps = [
 
 export function Hero() {
   const waitlistCount = useWaitlistCount();
+  const { scrollY } = useScroll();
+  // parallax: ambient layers drift up slower than the content as you scroll
+  const gridY = useTransform(scrollY, [0, 600], [0, 80]);
+  const glowY = useTransform(scrollY, [0, 600], [0, 50]);
+  const haloY = useTransform(scrollY, [0, 600], [0, 120]);
   return (
     <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28">
-      {/* Ambient layers */}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-grid [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_60%,transparent_100%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] glow-radial" />
-      <div className="pointer-events-none absolute left-1/2 top-24 -z-10 h-[340px] w-[680px] -translate-x-1/2 halo-conic animate-cadence-aurora opacity-70" />
+      {/* Ambient layers (parallax) */}
+      <motion.div style={{ y: gridY }} className="pointer-events-none absolute inset-0 -z-10 bg-grid [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_60%,transparent_100%)]" />
+      <motion.div style={{ y: glowY }} className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] glow-radial" />
+      <motion.div style={{ y: haloY }} className="pointer-events-none absolute left-1/2 top-24 -z-10 h-[340px] w-[680px] -translate-x-1/2 halo-conic animate-cadence-aurora opacity-70" />
 
       <div className="mx-auto max-w-6xl px-6">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">

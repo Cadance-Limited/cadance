@@ -6,6 +6,7 @@ import { HowItWorks } from "@/components/site/how-it-works";
 import { LiveDemo } from "@/components/site/live-demo";
 import { UseCases } from "@/components/site/use-cases";
 import { Integrations } from "@/components/site/integrations";
+import { Blog } from "@/components/site/blog";
 import { Testimonial } from "@/components/site/testimonial";
 import { Comparison } from "@/components/site/comparison";
 import { Security } from "@/components/site/security";
@@ -18,44 +19,49 @@ import { BackToTop } from "@/components/site/back-to-top";
 import { StickyDemoCTA } from "@/components/site/sticky-demo-cta";
 import { CookieConsent } from "@/components/site/cookie-consent";
 import { ShortcutsOverlay } from "@/components/site/shortcuts-overlay";
+import { ChangelogProvider } from "@/components/site/changelog";
 import { SectionDivider } from "@/components/site/section-divider";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Nav />
-      <main className="flex-1">
-        <Hero />
-        <TrustBar />
-        <SectionDivider />
-        <FeaturesBento />
-        <SectionDivider />
-        <HowItWorks />
-        <SectionDivider />
-        <LiveDemo />
-        <SectionDivider />
-        <UseCases />
-        <SectionDivider />
-        <Integrations />
-        <SectionDivider />
-        <Testimonial />
-        <SectionDivider />
-        <Comparison />
-        <SectionDivider />
-        <Security />
-        <SectionDivider />
-        <Pricing />
-        <SectionDivider />
-        <FAQ />
-        <SectionDivider />
-        <CTAEmail />
-      </main>
-      <Footer />
-      <CommandPalette />
-      <ShortcutsOverlay />
-      <BackToTop />
-      <StickyDemoCTA />
-      <CookieConsent />
-    </div>
+    <ChangelogProvider>
+      <div className="flex min-h-screen flex-col bg-background">
+        <Nav />
+        <main className="flex-1">
+          <Hero />
+          <TrustBar />
+          <SectionDivider />
+          <FeaturesBento />
+          <SectionDivider />
+          <HowItWorks />
+          <SectionDivider />
+          <LiveDemo />
+          <SectionDivider />
+          <UseCases />
+          <SectionDivider />
+          <Integrations />
+          <SectionDivider />
+          <Blog />
+          <SectionDivider />
+          <Testimonial />
+          <SectionDivider />
+          <Comparison />
+          <SectionDivider />
+          <Security />
+          <SectionDivider />
+          <Pricing />
+          <SectionDivider />
+          <FAQ />
+          <SectionDivider />
+          <CTAEmail />
+        </main>
+        <Footer />
+        <CommandPalette />
+        <ShortcutsOverlay />
+        <BackToTop />
+        <StickyDemoCTA />
+        <CookieConsent />
+      </div>
+    </ChangelogProvider>
   );
 }
