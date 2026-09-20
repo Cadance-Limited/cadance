@@ -41,6 +41,7 @@ const navItems = [
   { label: "Integrations", href: "#integrations" },
   { label: "Field notes", href: "#blog" },
   { label: "Security & compliance", href: "#security" },
+  { label: "Roadmap", href: "#roadmap" },
   { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },
   { label: "Get access", href: "#cta" },

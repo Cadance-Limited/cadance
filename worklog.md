@@ -288,3 +288,43 @@ Task: QA sweep + new features (blog section, footer newsletter, changelog modal)
 - **Hero parallax is subtle** — the ambient layers drift but the effect is only visible during the first 600px of scroll. Could extend the range or add content parallax for more drama, but subtle is on-brand for Linear/Vercel aesthetics.
 - **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach. Low priority.
 - **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a "stats in context" mini-section explaining what each trust-bar number means, (c) add a "compare with alternatives" section naming specific competitor products, (d) add a testimonials carousel (multiple quotes instead of one), (e) add a "glossary" popover for technical terms (e.g. "3-way match"), (f) add a roadmap teaser section, (g) add a contact/sales form for the Scale tier, (h) add micro-interactions to the FAQ accordion (smooth height + chevron rotate).
+
+---
+Task ID: 8
+Agent: orchestrator (cron webDevReview)
+Task: QA sweep + new features (testimonials carousel, glossary popover, roadmap section) + styling polish (FAQ numbered items, carousel controls).
+
+## Current project status / assessment
+- Project stable from round 7: 0 console errors, all APIs 200, lint clean, 14 sections render, all interactive features working.
+- QA confirmed: full page scroll (top→bottom→top) with 0 errors. All sections, nav, footer, command palette, mobile menu, back-to-top, sticky CTA, shortcuts overlay, changelog modal present.
+- NOTE: Dev server crashed mid-round due to a Fast Refresh runtime error (Testimonial renamed to TestimonialCarousel but page import not updated). Fixed the import alias (`TestimonialCarousel as Testimonial`), restarted server, verified 200 response + 0 errors.
+
+## Completed modifications / verification results
+
+### New features
+1. **Testimonials carousel** (`testimonial.tsx` rewrite) — Replaced the single static quote with a 3-quote carousel: Maya Vance (VP Ops, Northwind), James Kim (Director of Finance, Helix Logistics), Aria Rao (Head of Procurement, Aurora Mfg.). Auto-advances every 7s, pauses on hover. Manual controls: 3 navigation dots (click to jump) + prev/next arrow buttons. Uses AnimatePresence for smooth quote transitions. VLM confirmed: "large quote with author initials + name + role. Navigation dots and prev/next arrows at the bottom."
+2. **Glossary popover** (`glossary.tsx`) — Reusable inline component that renders a dashed-underlined term with an Info icon. Click opens a popover with a plain-English definition. Glossary covers: 3-way match, Net terms, Anomaly, AP, SLA, SOP. Applied to "3-way match" in the hero prescription card. Designed for non-technical business readers encountering ops/finance jargon. Verified: cursor-help button present, popover opens on click.
+3. **Roadmap section** (`roadmap.tsx`) — New section with 3 columns: Shipped (3 items: Document intelligence v2, Reasoning traces, SOC 2 Type II), Next (3 items: File upload, Scheduled diagnostics, Custom diagnostic rules — Q4), Later (3 items: Multi-org workspaces, Private deployment, Cadence API — Q1/Q2). Each item has a status icon (CheckCircle2/Sparkles/Circle), title, detail, and quarter badge. Uses card-glow hover. Inserted between Security and Pricing. VLM confirmed: "3 columns with status items, each with status icon, title, detail, quarter badge. No defects."
+
+### Styling enhancements
+4. **FAQ numbered items + open state** (`faq.tsx`) — Each FAQ question now has a monospace number (01, 02, ...) prefix. Added `data-[state=open]:border-foreground/20` to highlight the open item's border. Answer content indented with `pl-8` to align with the question text (past the number). The shadcn accordion's built-in chevron rotation + smooth height animation is retained.
+5. **Testimonial carousel controls** — 3 pill-shaped dots (active = w-6 bg-foreground, inactive = w-1.5 bg-muted-foreground/30) + 2 arrow buttons in bordered squares. Hover states on all controls.
+6. **Command palette expanded** — Added "Roadmap" (#roadmap) to the ⌘K palette nav items (now 11 items).
+
+### Bug fix
+7. **Import alias fix** — Renamed `Testimonial` component to `TestimonialCarousel` but page.tsx still imported `Testimonial`, causing a runtime "Element type is invalid" crash. Fixed with `import { TestimonialCarousel as Testimonial }`. Dev server restarted, verified 200 + 0 console errors.
+
+### Verification (agent-browser + VLM)
+- 0 console errors across full scroll session (hooked console.error, scrolled top→bottom→top, 0 errors).
+- Testimonials carousel: 3 quotes, auto-advances, 5 control buttons (3 dots + 2 arrows). VLM confirmed controls visible at bottom. ✓
+- Glossary: 1 glossary term (3-way match) in hero, cursor-help button present, popover opens on click. ✓
+- Roadmap: found via #roadmap id, VLM confirms "3 columns with status items, each with status icon, title, detail, quarter badge. No defects." ✓
+- FAQ: numbered items (01, 02...) present, open state border highlight. ✓
+- Command palette: 11 nav items (added Roadmap). ✓
+- Lint: clean (0 errors, 0 warnings). ✓
+
+## Unresolved issues / risks + next-phase recommendations
+- **Dev server crash recovery** — The server crashed mid-round due to the import mismatch and required a manual background restart (`bun run dev &`). The system auto-restart didn't kick in after the Fast Refresh runtime error. Future rounds should verify the server is up before testing.
+- **Glossary only applied to 1 term** — only "3-way match" in the hero has the glossary treatment. Could apply to more terms across the page (Net terms in trust-bar, AP in features, etc.) for consistency.
+- **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach. Low priority.
+- **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a "stats in context" mini-section explaining what each trust-bar number means, (c) add a "compare with alternatives" section naming specific competitor products, (d) add a contact/sales form for the Scale tier, (e) apply glossary to more terms across the page, (f) add a "glossary index" page or modal listing all terms, (g) add micro-interactions to the roadmap items (hover lift), (h) add a "last updated" timestamp to the changelog modal.

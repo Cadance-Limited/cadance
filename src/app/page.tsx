@@ -7,9 +7,10 @@ import { LiveDemo } from "@/components/site/live-demo";
 import { UseCases } from "@/components/site/use-cases";
 import { Integrations } from "@/components/site/integrations";
 import { Blog } from "@/components/site/blog";
-import { Testimonial } from "@/components/site/testimonial";
+import { TestimonialCarousel as Testimonial } from "@/components/site/testimonial";
 import { Comparison } from "@/components/site/comparison";
 import { Security } from "@/components/site/security";
+import { Roadmap } from "@/components/site/roadmap";
 import { Pricing } from "@/components/site/pricing";
 import { FAQ } from "@/components/site/faq";
 import { CTAEmail } from "@/components/site/cta-email";
@@ -48,6 +49,8 @@ export default function Home() {
           <Comparison />
           <SectionDivider />
           <Security />
+          <SectionDivider />
+          <Roadmap />
           <SectionDivider />
           <Pricing />
           <SectionDivider />

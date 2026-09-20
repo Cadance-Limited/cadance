@@ -48,12 +48,17 @@ export function FAQ() {
             <AccordionItem
               key={i}
               value={`item-${i}`}
-              className="border-b border-border"
+              className="group border-b border-border transition-colors data-[state=open]:border-foreground/20"
             >
-              <AccordionTrigger className="py-5 text-left text-base font-medium text-foreground hover:no-underline hover:text-foreground/90">
-                {f.q}
+              <AccordionTrigger className="py-5 text-left text-base font-medium text-foreground transition-colors hover:no-underline hover:text-foreground/90 data-[state=open]:text-foreground">
+                <span className="flex items-center gap-3">
+                  <span className="font-mono text-xs text-muted-foreground/40 tabular-nums">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  {f.q}
+                </span>
               </AccordionTrigger>
-              <AccordionContent className="pb-5 text-sm leading-relaxed text-muted-foreground">
+              <AccordionContent className="pb-5 pl-8 text-sm leading-relaxed text-muted-foreground">
                 {f.a}
               </AccordionContent>
             </AccordionItem>

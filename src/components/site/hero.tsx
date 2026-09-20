@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Check, ChevronDown, FileText, Sparkles, Zap } from "lucide-react";
 import { Eyebrow } from "./section-heading";
 import { useWaitlistCount } from "@/hooks/use-waitlist-count";
+import { Glossary } from "./glossary";
 import { cn } from "@/lib/utils";
 
 const reasoningSteps = [
@@ -237,7 +238,7 @@ function HeroPanel() {
               Auto-approve invoices under $5k
             </p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Bypass manual 3-way match for low-risk invoices. Route
+              Bypass manual <Glossary term="3-way match">3-way match</Glossary> for low-risk invoices. Route
               exceptions to a single reviewer queue.
             </p>
             <div className="mt-3 flex items-baseline gap-1.5">
