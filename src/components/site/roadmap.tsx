@@ -133,7 +133,7 @@ export function Roadmap() {
                   return (
                     <div
                       key={item.title}
-                      className="card-glow group relative flex flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/25"
+                      className="card-glow group relative flex flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-[0_12px_30px_-16px_oklch(0_0_0/0.4)]"
                       onMouseMove={(e) => {
                         const r = e.currentTarget.getBoundingClientRect();
                         e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);

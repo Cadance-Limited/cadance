@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   Accordion,
   AccordionContent,
@@ -7,11 +8,16 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { SectionHeading } from "./section-heading";
+import { Glossary } from "./glossary";
 
-const faqs = [
+const faqs: { q: string; a: React.ReactNode }[] = [
   {
     q: "What can Cadence actually read?",
-    a: "Invoices, vendor agreements, contracts, SOPs, and most business PDFs — pasted as text, uploaded as a URL, or pulled through an integration. The live demo accepts a URL or pasted text right now. File upload arrives with the Team plan.",
+    a: (
+      <>
+        Invoices, vendor agreements, contracts, <Glossary term="SOP">SOPs</Glossary>, and most business PDFs — pasted as text, uploaded as a URL, or pulled through an integration. The live demo accepts a URL or pasted text right now. File upload arrives with the Team plan.
+      </>
+    ),
   },
   {
     q: "Does Cadence invent the numbers it cites?",
@@ -27,7 +33,11 @@ const faqs = [
   },
   {
     q: "How is this different from another dashboard?",
-    a: "Dashboards describe what happened. Cadence diagnoses why it happened, where the friction lives, and what to do about it — then turns each prescription into a draft rule you can ship in one click.",
+    a: (
+      <>
+        Dashboards describe what happened. Cadence diagnoses why it happened, where the friction lives, and what to do about it — then turns each prescription into a draft rule you can ship in one click. It catches <Glossary term="anomaly">anomalies</Glossary> before you have to look for them.
+      </>
+    ),
   },
   {
     q: "When does the Team plan open up?",

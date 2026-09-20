@@ -328,3 +328,38 @@ Task: QA sweep + new features (testimonials carousel, glossary popover, roadmap 
 - **Glossary only applied to 1 term** — only "3-way match" in the hero has the glossary treatment. Could apply to more terms across the page (Net terms in trust-bar, AP in features, etc.) for consistency.
 - **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach. Low priority.
 - **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a "stats in context" mini-section explaining what each trust-bar number means, (c) add a "compare with alternatives" section naming specific competitor products, (d) add a contact/sales form for the Scale tier, (e) apply glossary to more terms across the page, (f) add a "glossary index" page or modal listing all terms, (g) add micro-interactions to the roadmap items (hover lift), (h) add a "last updated" timestamp to the changelog modal.
+
+---
+Task ID: 9
+Agent: orchestrator (cron webDevReview)
+Task: QA sweep + new features (stats-in-context section, contact-sales modal, glossary in FAQ) + styling polish (roadmap hover lift, changelog last-updated timestamp).
+
+## Current project status / assessment
+- Project stable from round 8: 0 console errors, all APIs 200, lint clean, 15 sections render, all interactive features working.
+- Dev server was up (verified 200 before QA). QA confirmed: full page scroll (top→bottom→top) with 0 errors. All sections, nav, footer, command palette, mobile menu, back-to-top, sticky CTA, shortcuts overlay, changelog modal present.
+
+## Completed modifications / verification results
+
+### New features
+1. **"Stats in context" section** (`stats-context.tsx`) — New section explaining the 4 trust-bar numbers with method + source. Each stat card has: big number (1.2M+, 6.2 hrs, 73%, 98%), label, contextual explanation (how it was measured), and a source line ("Aggregate usage, last 12 months", "Median across 24 piloting teams", etc.). Uses card-glow hover. Inserted between TrustBar and FeaturesBento. VLM confirmed: "4 stat cards with big number, label, explanation, source line. 2-column grid. No defects."
+2. **Contact/sales form for Scale tier** (`contact-sales.tsx`) — Modal dialog triggered by the "Talk to us" button on the Scale pricing card (now a button, not a Link). Form has 4 fields: Name, Company, Work email, Seats (optional). Submits to POST /api/subscribe with source "contact-sales" and role encoding the seat count. Success state shows a checkmark + "A solutions engineer will reach out within one business day." Verified: clicked "Talk to us" → modal opened "Talk to sales — Scale plan", 4 fields, "Request access" button.
+3. **Glossary applied to FAQ** (`faq.tsx`) — Converted FAQ answers from string to ReactNode (JSX) to allow inline Glossary terms. Applied Glossary to "SOPs" (FAQ #1) and "anomalies" (FAQ #5). Combined with the existing "3-way match" in the hero, there are now 3 glossary terms across the page. Verified: expanded FAQ #1 → 2 glossary terms visible ("3-way match" from hero + "SOPs" from FAQ).
+
+### Styling enhancements
+4. **Roadmap items hover lift** (`roadmap.tsx`) — Each roadmap item card now has `hover:-translate-y-0.5` lift + `hover:shadow-[0_12px_30px_-16px]` deepening shadow in addition to the existing card-glow. Consistent with the pricing card micro-animations from round 7.
+5. **Changelog last-updated timestamp** (`changelog.tsx`) — Added a "Last updated [today's date]" line with a cadence-green dot below the dialog description. Uses `new Date().toLocaleDateString()` so it always shows the current date.
+6. **Page now has 16 sections** — Added StatsContext between TrustBar and FeaturesBento.
+
+### Verification (agent-browser + VLM)
+- 0 console errors across full scroll session (hooked console.error, scrolled top→bottom→top, 0 errors).
+- Stats-in-context: found via heading text, VLM confirms "4 stat cards with big number, label, explanation, source. 2-column grid. No defects." ✓
+- Contact sales modal: clicked "Talk to us" → dialog opened "Talk to sales — Scale plan", 4 fields, "Request access" button. ✓
+- Glossary in FAQ: expanded FAQ #1 → 2 glossary terms visible ("3-way match" + "SOPs"). ✓
+- Roadmap hover lift: transition-all + hover:-translate-y-0.5 + shadow added. ✓
+- Changelog last-updated: timestamp present in modal header. ✓
+- Lint: clean (0 errors, 0 warnings). ✓
+
+## Unresolved issues / risks + next-phase recommendations
+- **Glossary terms only in 3 places** — "3-way match" (hero), "SOPs" + "anomalies" (FAQ). Could apply to more terms (AP, SLA, Net terms) in the use-cases/blog sections, but those use string arrays which can't wrap JSX components. Would need to convert more text to JSX.
+- **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach. Low priority.
+- **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a "compare with alternatives" section naming specific competitor products (legal risk — careful), (c) add a glossary index modal listing all defined terms, (d) convert more blog/use-cases text to JSX to allow glossary terms, (e) add a "guided tour" onboarding flow for first-time visitors, (f) add a dark/light theme preview toggle in the pricing section, (g) add a "maturity assessment" interactive widget (quiz-style), (h) add micro-animations to the stats-context cards (count-up on the big numbers).

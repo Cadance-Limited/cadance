@@ -94,10 +94,13 @@ function ChangelogModal({
             </span>
             What&apos;s new in Cadence
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Ship notes from the last two weeks. We push continuously — this is
-            the highlight reel.
+          <DialogDescription className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Ship notes from the last two weeks. We push continuously — this is the highlight reel.</span>
           </DialogDescription>
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
+            <span className="h-1 w-1 rounded-full bg-cadence" />
+            Last updated {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </div>
         </DialogHeader>
 
         <div className="flex flex-col gap-px bg-border">

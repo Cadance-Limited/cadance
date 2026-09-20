@@ -1,9 +1,11 @@
 "use client";
 
+import * as React from "react";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import Link from "next/link";
 import { SectionHeading } from "./section-heading";
+import { ContactSalesModal } from "./contact-sales";
 import { cn } from "@/lib/utils";
 
 const tiers = [
@@ -14,6 +16,7 @@ const tiers = [
     description: "Kick the tires on the live demo. No card, no login.",
     cta: { label: "Try the demo", href: "#demo" },
     primary: false,
+    salesAction: false,
     features: [
       "Diagnostic chat — 50 messages / month",
       "Document analysis — 25 documents / month",
@@ -28,6 +31,7 @@ const tiers = [
     description: "For ops teams that live in invoices and contracts.",
     cta: { label: "Get access", href: "#cta" },
     primary: true,
+    salesAction: false,
     features: [
       "Unlimited diagnostic chat & analysis",
       "Up to 5 seats",
@@ -43,6 +47,7 @@ const tiers = [
     description: "For finance and ops orgs that need guardrails.",
     cta: { label: "Talk to us", href: "#cta" },
     primary: false,
+    salesAction: true,
     features: [
       "SSO + SCIM, audit log, SOC 2",
       "Custom diagnostic rules",
@@ -54,6 +59,8 @@ const tiers = [
 ];
 
 export function Pricing() {
+  const [salesOpen, setSalesOpen] = React.useState(false);
+
   return (
     <section id="pricing" className="relative scroll-mt-20 py-24 sm:py-32">
       <div className="mx-auto max-w-6xl px-6">
@@ -109,17 +116,30 @@ export function Pricing() {
                 {t.description}
               </p>
 
-              <Link
-                href={t.cta.href}
-                className={cn(
-                  "mt-6 inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-medium transition-all",
-                  t.primary
-                    ? "shimmer-border bg-foreground text-background hover:translate-y-[-1px]"
-                    : "border border-border bg-secondary/40 text-foreground hover:bg-secondary",
-                )}
-              >
-                {t.cta.label}
-              </Link>
+              {t.salesAction ? (
+                <button
+                  type="button"
+                  onClick={() => setSalesOpen(true)}
+                  className={cn(
+                    "mt-6 inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-medium transition-all",
+                    "border border-border bg-secondary/40 text-foreground hover:bg-secondary",
+                  )}
+                >
+                  {t.cta.label}
+                </button>
+              ) : (
+                <Link
+                  href={t.cta.href}
+                  className={cn(
+                    "mt-6 inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-medium transition-all",
+                    t.primary
+                      ? "shimmer-border bg-foreground text-background hover:translate-y-[-1px]"
+                      : "border border-border bg-secondary/40 text-foreground hover:bg-secondary",
+                  )}
+                >
+                  {t.cta.label}
+                </Link>
+              )}
 
               <ul className="mt-6 flex flex-col gap-2.5 border-t border-border pt-5">
                 {t.features.map((f) => (
@@ -138,6 +158,8 @@ export function Pricing() {
           ))}
         </div>
       </div>
+
+      <ContactSalesModal open={salesOpen} onOpenChange={setSalesOpen} />
     </section>
   );
 }

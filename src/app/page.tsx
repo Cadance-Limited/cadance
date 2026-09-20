@@ -1,6 +1,7 @@
 import { Nav } from "@/components/site/nav";
 import { Hero } from "@/components/site/hero";
 import { TrustBar } from "@/components/site/trust-bar";
+import { StatsContext } from "@/components/site/stats-context";
 import { FeaturesBento } from "@/components/site/features-bento";
 import { HowItWorks } from "@/components/site/how-it-works";
 import { LiveDemo } from "@/components/site/live-demo";
@@ -31,6 +32,8 @@ export default function Home() {
         <main className="flex-1">
           <Hero />
           <TrustBar />
+          <SectionDivider />
+          <StatsContext />
           <SectionDivider />
           <FeaturesBento />
           <SectionDivider />
