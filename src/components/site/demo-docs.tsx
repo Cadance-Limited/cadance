@@ -262,6 +262,11 @@ function EmptyState() {
         Paste a document or load the sample invoice to see Cadence&apos;s
         analysis.
       </div>
+      <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground/60">
+        <span className="rounded-md border border-border bg-secondary/30 px-2 py-0.5">
+          Tip: try the sample invoice →
+        </span>
+      </div>
     </div>
   );
 }

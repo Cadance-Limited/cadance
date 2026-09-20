@@ -97,3 +97,42 @@ Task: QA sweep + bug fixes + feature/styling enhancements.
 - **Section dividers not yet placed**: the `.divider-fade` utility was added but not inserted between sections on the page. Could add subtle dividers between Hero/TrustBar, Features/HowItWorks, etc. for stronger visual rhythm.
 - **`.text-gradient-flow`** utility added but not yet applied to any accent words. Could use it on the "Cadence" wordmark or section eyebrow text for a premium feel.
 - **Recommended next steps**: (a) add an animated logo/wordmark detail, (b) add a "back to top" button, (c) consider a comparison table section ("Cadence vs. dashboards"), (d) add micro-copy to empty/loading states, (e) add OpenGraph image generation.
+
+---
+Task ID: 3
+Agent: orchestrator (cron webDevReview)
+Task: QA sweep + new features (back-to-top, comparison section, animated counters) + styling polish (section dividers, logo detail, empty-state micro-copy).
+
+## Current project status / assessment
+- Project stable from round 2: 0 console errors, all 3 APIs 200, lint clean, all sections render, command palette + mobile menu working.
+- QA confirmed: scrolled full page (top → bottom → top), 0 errors triggered. All 6 section IDs present, nav complete, footer present.
+
+## Completed modifications / verification results
+
+### New features
+1. **Back-to-top button** (`back-to-top.tsx`) — Fixed bottom-left, appears via AnimatePresence when scrollY > 600px. Smooth-scrolls to top on click. Verified: clicked at scrollY 2007 → scrolled to 0. Opacity 1, 40×40px, pointer-events auto.
+2. **Comparison section** (`comparison.tsx`) — New "Cadence vs. dashboards" section with a 3-column table (Capability / Dashboards / Cadence). 9 capability rows with check (cadence-green), x (muted), and minus (partial) icons. Cadence column visually highlighted with subtle background + top gradient accent. Closing line: "The dashboard isn't dead — it just isn't enough." Inserted between Testimonial and Pricing.
+3. **Animated count-up counters** (`use-count-up.ts` hook + trust-bar rewrite) — Trust bar stats now animate from 0 to target value on scroll-into-view via IntersectionObserver + requestAnimationFrame easing. Stats: 1.2M+ docs, 6.2 hrs saved, 73% faster, 98% recall. Verified: scrolled to trust bar → values animated to final state (1.2M+, 6.2 hrs, 73%, 98%).
+
+### Styling enhancements
+4. **Section dividers** (`section-divider.tsx` + page.tsx) — Thin gradient hairline (`from-transparent via-border to-transparent`) inserted between all 9 sections for visual rhythm. 8 dividers placed. Verified: 11 gradient elements in main (dividers + internal section gradients).
+5. **Logo depth detail** — Added a subtle inner highlight rect (white/[0.06] on top half) to the logo mark for tactile depth.
+6. **Empty-state micro-copy** — Demo docs empty state now includes a "Tip: try the sample invoice →" hint chip below the main message.
+7. **Tabular-nums** — All animated stat values use `tabular-nums` to prevent layout shift during count-up.
+
+### Verification (agent-browser + VLM)
+- 0 console errors across full scroll session.
+- Back-to-top: appears on scroll > 600px, click scrolls to top (2007 → 0). ✓
+- Comparison section: found via text search, 10 grid rows, 18 icons. VLM confirms: "well-structured 3 columns, icons clearly visible, Cadence column highlighted, no defects." ✓
+- Count-up: triggered on scroll-into-view, animated to final values (1.2M+, 6.2 hrs, 73%, 98%). ✓
+- Section dividers: 8 placed, rendering as gradient hairlines. ✓
+- Progress bar: scaleX 0.033 at 300px scroll (proportional). ✓
+- Social proof: "412+ operators" in DOM. ✓
+- Chat textarea + send button present. ✓
+- Lint: clean (0 errors, 0 warnings). ✓
+
+## Unresolved issues / risks + next-phase recommendations
+- **`.text-gradient-flow` utility still unused** — was added in round 2 but not yet applied to any accent text. Could apply to the "Cadence" wordmark in the footer or section eyebrow text.
+- **Comparison section has no `id`** — not needed for current nav, but could add `id="compare"` + a nav link if desired.
+- **Animated counters only fire once** — `useInView` disconnects after first intersection (intentional, prevents re-trigger on scroll up/down). This is correct behavior.
+- **Recommended next steps**: (a) add a "logos as SVG" row for more credible trust bar, (b) add keyboard shortcut hints to the command palette items, (c) add a sticky demo CTA that appears after scrolling past the hero, (d) add OpenGraph image generation via Next.js metadata, (e) consider adding a short "stats in context" mini-section explaining what each number means, (f) add a cookie/consent banner for compliance polish.

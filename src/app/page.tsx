@@ -5,11 +5,14 @@ import { FeaturesBento } from "@/components/site/features-bento";
 import { HowItWorks } from "@/components/site/how-it-works";
 import { LiveDemo } from "@/components/site/live-demo";
 import { Testimonial } from "@/components/site/testimonial";
+import { Comparison } from "@/components/site/comparison";
 import { Pricing } from "@/components/site/pricing";
 import { FAQ } from "@/components/site/faq";
 import { CTAEmail } from "@/components/site/cta-email";
 import { Footer } from "@/components/site/footer";
 import { CommandPalette } from "@/components/site/command-palette";
+import { BackToTop } from "@/components/site/back-to-top";
+import { SectionDivider } from "@/components/site/section-divider";
 
 export default function Home() {
   return (
@@ -18,16 +21,26 @@ export default function Home() {
       <main className="flex-1">
         <Hero />
         <TrustBar />
+        <SectionDivider />
         <FeaturesBento />
+        <SectionDivider />
         <HowItWorks />
+        <SectionDivider />
         <LiveDemo />
+        <SectionDivider />
         <Testimonial />
+        <SectionDivider />
+        <Comparison />
+        <SectionDivider />
         <Pricing />
+        <SectionDivider />
         <FAQ />
+        <SectionDivider />
         <CTAEmail />
       </main>
       <Footer />
       <CommandPalette />
+      <BackToTop />
     </div>
   );
 }

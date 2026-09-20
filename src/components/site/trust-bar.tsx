@@ -1,3 +1,7 @@
+"use client";
+
+import { useCountUp, useInView } from "@/hooks/use-count-up";
+
 const logos = [
   "Northwind",
   "Vela",
@@ -7,14 +11,17 @@ const logos = [
   "Meridian",
 ];
 
+// numeric target + display formatting for the count-up animation
 const stats = [
-  { value: "1.2M+", label: "documents analyzed" },
-  { value: "6.2 hrs", label: "saved per week, per team" },
-  { value: "73%", label: "faster contract review" },
-  { value: "98%", label: "anomaly recall vs. manual audit" },
+  { target: 1.2, suffix: "M+", decimals: 1, label: "documents analyzed" },
+  { target: 6.2, suffix: " hrs", decimals: 1, label: "saved per week, per team" },
+  { target: 73, suffix: "%", decimals: 0, label: "faster contract review" },
+  { target: 98, suffix: "%", decimals: 0, label: "anomaly recall vs. manual audit" },
 ];
 
 export function TrustBar() {
+  const { ref, inView } = useInView<HTMLDivElement>({ threshold: 0.3 });
+
   return (
     <section className="relative border-y border-border bg-secondary/20">
       <div className="mx-auto max-w-6xl px-6 py-12">
@@ -32,19 +39,39 @@ export function TrustBar() {
           ))}
         </div>
 
-        <div className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-4">
+        <div
+          ref={ref}
+          className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-4"
+        >
           {stats.map((s) => (
-            <div key={s.label} className="bg-background p-5 text-center sm:p-6">
-              <div className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                {s.value}
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                {s.label}
-              </div>
-            </div>
+            <StatCard key={s.label} stat={s} start={inView} />
           ))}
         </div>
       </div>
     </section>
+  );
+}
+
+function StatCard({
+  stat,
+  start,
+}: {
+  stat: (typeof stats)[number];
+  start: boolean;
+}) {
+  const value = useCountUp(stat.target, {
+    decimals: stat.decimals,
+    start,
+  });
+  return (
+    <div className="bg-background p-5 text-center sm:p-6">
+      <div className="text-2xl font-semibold tracking-tight text-foreground tabular-nums sm:text-3xl">
+        {value}
+        <span className="text-foreground">{stat.suffix}</span>
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground sm:text-sm">
+        {stat.label}
+      </div>
+    </div>
   );
 }

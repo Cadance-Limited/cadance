@@ -16,6 +16,15 @@ export function LogoMark({ className }: { className?: string }) {
         rx="8.5"
         className="fill-foreground"
       />
+      {/* subtle inner highlight for depth */}
+      <rect
+        x="0.5"
+        y="0.5"
+        width="31"
+        height="15"
+        rx="8.5"
+        className="fill-white/[0.06]"
+      />
       <path
         d="M6 16.2h3.4l2-4.2 3.2 8.6 2.4-6.4 1.8 3.4H26"
         className="stroke-background"
@@ -36,7 +45,9 @@ export function Logo({
 }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <LogoMark />
+      <span className="relative">
+        <LogoMark />
+      </span>
       {showWordmark && (
         <span className="text-[17px] font-semibold tracking-tight text-foreground">
           Cadence
