@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Check, FileText, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, FileText, Sparkles, Zap } from "lucide-react";
 import { Eyebrow } from "./section-heading";
 import { useWaitlistCount } from "@/hooks/use-waitlist-count";
 import { cn } from "@/lib/utils";
@@ -137,6 +137,26 @@ export function Hero() {
         >
           <div className="absolute -inset-x-8 -top-6 -bottom-6 -z-10 rounded-[2rem] bg-gradient-to-b from-foreground/[0.06] to-transparent blur-2xl" />
           <HeroPanel />
+        </motion.div>
+
+        {/* scroll-to-explore indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.9 }}
+          className="mt-14 flex flex-col items-center gap-2"
+        >
+          <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/50">
+            Scroll to explore
+          </span>
+          <motion.div
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+            className="flex h-8 w-5 items-start justify-center rounded-full border border-border pt-1.5"
+          >
+            <motion.span className="h-1.5 w-1 rounded-full bg-muted-foreground/60" />
+          </motion.div>
+          <ChevronDown className="-mt-1 h-3.5 w-3.5 text-muted-foreground/40" />
         </motion.div>
       </div>
     </section>

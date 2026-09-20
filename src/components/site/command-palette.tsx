@@ -38,6 +38,7 @@ const navItems = [
   { label: "How it works", href: "#how" },
   { label: "Live demo", href: "#demo" },
   { label: "Built for", href: "#use-cases" },
+  { label: "Integrations", href: "#integrations" },
   { label: "Security & compliance", href: "#security" },
   { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },

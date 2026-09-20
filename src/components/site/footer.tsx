@@ -44,12 +44,20 @@ export function Footer() {
               what&apos;s next.
             </p>
             <ThemeToggle />
-            <div className="mt-1 text-[11px] text-muted-foreground/50">
-              Press{" "}
-              <kbd className="inline-flex h-4 items-center rounded border border-border bg-secondary px-1 font-mono text-[10px] text-muted-foreground">
-                ⌘K
-              </kbd>{" "}
-              anytime to jump.
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground/50">
+              <span className="flex items-center gap-1">
+                Press{" "}
+                <kbd className="inline-flex h-4 items-center rounded border border-border bg-secondary px-1 font-mono text-[10px] text-muted-foreground">
+                  ⌘K
+                </kbd>
+              </span>
+              <span className="flex items-center gap-1">
+                or{" "}
+                <kbd className="inline-flex h-4 items-center rounded border border-border bg-secondary px-1 font-mono text-[10px] text-muted-foreground">
+                  ?
+                </kbd>
+                for shortcuts
+              </span>
             </div>
           </div>
           {columns.map((col) => (

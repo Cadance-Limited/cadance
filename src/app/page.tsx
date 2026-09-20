@@ -5,6 +5,7 @@ import { FeaturesBento } from "@/components/site/features-bento";
 import { HowItWorks } from "@/components/site/how-it-works";
 import { LiveDemo } from "@/components/site/live-demo";
 import { UseCases } from "@/components/site/use-cases";
+import { Integrations } from "@/components/site/integrations";
 import { Testimonial } from "@/components/site/testimonial";
 import { Comparison } from "@/components/site/comparison";
 import { Security } from "@/components/site/security";
@@ -16,6 +17,7 @@ import { CommandPalette } from "@/components/site/command-palette";
 import { BackToTop } from "@/components/site/back-to-top";
 import { StickyDemoCTA } from "@/components/site/sticky-demo-cta";
 import { CookieConsent } from "@/components/site/cookie-consent";
+import { ShortcutsOverlay } from "@/components/site/shortcuts-overlay";
 import { SectionDivider } from "@/components/site/section-divider";
 
 export default function Home() {
@@ -34,6 +36,8 @@ export default function Home() {
         <SectionDivider />
         <UseCases />
         <SectionDivider />
+        <Integrations />
+        <SectionDivider />
         <Testimonial />
         <SectionDivider />
         <Comparison />
@@ -48,6 +52,7 @@ export default function Home() {
       </main>
       <Footer />
       <CommandPalette />
+      <ShortcutsOverlay />
       <BackToTop />
       <StickyDemoCTA />
       <CookieConsent />

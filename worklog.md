@@ -213,3 +213,40 @@ Task: QA sweep + new features (security section, demo tab keyboard nav, "What's 
 - **Cookie banner reappears each new browser session** — localStorage persists per-browser, so the VLM screenshots in fresh sessions see it. This is expected behavior, not a bug. Could add a "manage preferences" link in the footer for returning visitors who declined.
 - **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach for footer wordmark. Low priority.
 - **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a "blog/resources" teaser section with 3 article cards, (c) add a comparison "expandable detail" — click a row to see a 1-sentence rationale, (d) add a dedicated "integrations" grid section (QuickBooks, NetSuite, DocuSign, Slack logos), (e) add a "stats in context" mini-section explaining what each trust-bar number means, (f) add keyboard shortcut "?" to show all available shortcuts, (g) add a subtle "scroll to explore" indicator in the hero.
+
+---
+Task ID: 6
+Agent: orchestrator (cron webDevReview)
+Task: QA sweep + new features (integrations section, ? shortcuts overlay, scroll-to-explore indicator, expandable comparison rows) + styling polish (footer ? hint).
+
+## Current project status / assessment
+- Project stable from round 5: 0 console errors, all APIs 200, lint clean, 12 sections render, all interactive features working.
+- QA confirmed: full page scroll (top→bottom→top) with 0 errors. All sections, nav (with Security + What's new), footer, command palette, mobile menu, back-to-top, sticky CTA present.
+
+## Completed modifications / verification results
+
+### New features
+1. **Integrations grid section** (`integrations.tsx`) — New section with 12 integration tiles in a responsive grid (3/4/6 cols): QuickBooks, NetSuite, DocuSign, Slack, Xero, Notion, Gmail, Stripe, AWS, Drive, Salesforce, Zapier. Each tile has a 2-letter glyph badge, name, and category. Uses card-glow hover. Closing CTA: "Request it — most ship in under a week." Inserted between UseCases and Testimonial. VLM confirmed: "grid of integration tiles with 2-letter glyph badges."
+2. **Keyboard shortcuts overlay** (`shortcuts-overlay.tsx`) — Press `?` (Shift+/) anywhere (except when typing) to open a dialog listing all shortcuts: Global (⌘K, ?, esc), Navigate (⌘K jump, ←→ switch tabs), Appearance (Theme toggle). 10 kbd badges across 3 groups. Also closes on Escape. Verified: dispatched `?` keydown → dialog opened with "Keyboard shortcuts" title, 10 kbd elements, 3 groups.
+3. **Scroll-to-explore indicator** (`hero.tsx`) — Added an animated mouse-shape indicator at the bottom of the hero: "SCROLL TO EXPLORE" label + a pill-shaped track with a bouncing dot + chevron. Uses framer-motion infinite y-bounce animation. VLM confirmed: "animated mouse shape and chevron visible at the bottom."
+4. **Expandable comparison rows** (`comparison.tsx` rewrite) — Each of the 9 comparison rows is now a clickable button with `aria-expanded`. Clicking expands a detail panel (height auto animation via AnimatePresence) showing a 1-sentence rationale for that capability. Chevron rotates 180° when open. Description updated: "Click any row for the rationale." Verified: clicked row 2 → aria-expanded="true", detail text visible ("Dashboards stop at the chart. Cadence traces the chain…").
+
+### Styling enhancements
+5. **Footer shortcuts hint** — Updated the footer hint from just "Press ⌘K anytime to jump" to "Press ⌘K or ? for shortcuts" with two kbd badges, increasing shortcuts discoverability.
+6. **Command palette expanded** — Added "Integrations" (#integrations) to the ⌘K palette nav items (now 9 items).
+7. **Integrations card-glow** — Integration tiles use the cursor-tracking radial glow hover effect for consistency with bento + use-cases + security cards.
+
+### Verification (agent-browser + VLM)
+- 0 console errors across full scroll session (hooked console.error, scrolled top→bottom→top, 0 errors).
+- Integrations section: found via #integrations id, VLM confirms "2-letter glyph badges" visible. ✓
+- Shortcuts overlay: dispatched ? keydown → dialog opened "Keyboard shortcuts", 10 kbd badges, 3 groups. ✓
+- Scroll-to-explore: VLM confirms "animated mouse shape and chevron visible at the bottom." ✓
+- Expandable comparison: clicked row 2 → aria-expanded="true", detail text visible. 9 expandable rows total. ✓
+- Footer ? hint: present in DOM. ✓
+- Command palette: 9 nav items (added Integrations). ✓
+- Lint: clean (0 errors, 0 warnings). ✓
+
+## Unresolved issues / risks + next-phase recommendations
+- **Sticky CTA overlaps integrations bottom row** — the VLM noted the sticky "Launch demo" bar partially obscures the bottom integration tiles when scrolled to that section. This is expected (the sticky CTA is designed to persist), but could add a bottom-padding to the integrations section when the sticky CTA is visible. Low priority.
+- **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach for footer wordmark. Low priority.
+- **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a "blog/resources" teaser section with 3 article cards, (c) add a "stats in context" mini-section explaining what each trust-bar number means, (d) add a dedicated changelog/what's-new page or modal triggered by the nav badge, (e) add subtle parallax to the hero ambient layers on scroll, (f) add a "compare with alternatives" section naming specific competitor products, (g) add a newsletter signup in the footer, (h) add micro-animations to the pricing cards (hover lift + glow).
