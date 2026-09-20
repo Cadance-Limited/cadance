@@ -23,6 +23,7 @@ import { StickyDemoCTA } from "@/components/site/sticky-demo-cta";
 import { CookieConsent } from "@/components/site/cookie-consent";
 import { ShortcutsOverlay } from "@/components/site/shortcuts-overlay";
 import { ChangelogProvider } from "@/components/site/changelog";
+import { GuidedTour } from "@/components/site/guided-tour";
 import { SectionDivider } from "@/components/site/section-divider";
 
 export default function Home() {
@@ -67,6 +68,7 @@ export default function Home() {
         <Footer />
         <CommandPalette />
         <ShortcutsOverlay />
+        <GuidedTour />
         <BackToTop />
         <StickyDemoCTA />
         <CookieConsent />

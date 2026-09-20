@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Check, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowRight, Check, RotateCcw, Share2, Sparkles } from "lucide-react";
 import { SectionHeading } from "./section-heading";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 type Option = { label: string; score: number };
@@ -90,6 +91,7 @@ function scoreToResult(total: number): Result {
 export function MaturityAssessment() {
   const [step, setStep] = React.useState(-1); // -1 = intro, 0..2 = questions, 3 = result
   const [answers, setAnswers] = React.useState<Record<string, number>>({});
+  const { toast } = useToast();
 
   const select = (qid: string, score: number) => {
     setAnswers((a) => ({ ...a, [qid]: score }));
@@ -99,6 +101,29 @@ export function MaturityAssessment() {
   const reset = () => {
     setAnswers({});
     setStep(-1);
+  };
+
+  const share = () => {
+    const text = `My ops maturity: ${result?.band} — ${result?.headline} (Score: ${total}/12). Take the check at Cadence.`;
+    if (navigator.share) {
+      navigator.share({ title: "Cadence ops maturity check", text }).catch(() => {});
+    } else {
+      navigator.clipboard
+        ?.writeText(text)
+        .then(() =>
+          toast({
+            title: "Copied",
+            description: "Your result is on the clipboard.",
+          }),
+        )
+        .catch(() =>
+          toast({
+            title: "Share unavailable",
+            description: "Copy the result manually.",
+            variant: "destructive",
+          }),
+        );
+    }
   };
 
   const total = Object.values(answers).reduce((a, b) => a + b, 0);
@@ -216,13 +241,23 @@ export function MaturityAssessment() {
                   transition={{ duration: 0.4 }}
                   className="flex flex-col gap-4"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full border border-cadence/30 bg-cadence/10 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-cadence">
-                      {result.band}
-                    </span>
-                    <span className="text-xs text-muted-foreground/60">
-                      Score: {total} / 12
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <motion.span
+                      initial={{ scale: 0, rotate: -30 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.15 }}
+                      className="flex h-9 w-9 items-center justify-center rounded-full bg-cadence/10 text-cadence"
+                    >
+                      <Check className="h-4 w-4" />
+                    </motion.span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full border border-cadence/30 bg-cadence/10 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-cadence">
+                        {result.band}
+                      </span>
+                      <span className="text-xs text-muted-foreground/60">
+                        Score: {total} / 12
+                      </span>
+                    </div>
                   </div>
                   <h3 className="text-xl font-semibold tracking-tight text-foreground">
                     {result.headline}
@@ -230,7 +265,7 @@ export function MaturityAssessment() {
                   <p className="text-sm leading-relaxed text-muted-foreground">
                     {result.detail}
                   </p>
-                  <div className="mt-2 flex flex-col gap-2.5 sm:flex-row">
+                  <div className="mt-2 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
                     <a
                       href="#demo"
                       className="shimmer-border inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-foreground px-5 text-sm font-medium text-background transition-all hover:translate-y-[-1px]"
@@ -238,6 +273,13 @@ export function MaturityAssessment() {
                       {result.cta}
                       <ArrowRight className="h-3.5 w-3.5" />
                     </a>
+                    <button
+                      onClick={share}
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/40 px-5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                      Share
+                    </button>
                     <button
                       onClick={reset}
                       className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/40 px-5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
