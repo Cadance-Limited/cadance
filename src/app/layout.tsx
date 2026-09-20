@@ -2,36 +2,50 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/site/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  title: "Cadence — The AI operations analyst",
+  description:
+    "Cadence diagnoses your operations from invoices, contracts, and SOPs, then prescribes the workflow fixes that matter. Built for business teams.",
+  keywords: [
+    "AI operations",
+    "workflow automation",
+    "invoice analysis",
+    "contract review",
+    "business diagnostics",
+    "AI analyst",
+    "Cadence",
+  ],
+  authors: [{ name: "Cadence" }],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
   openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
+    title: "Cadence — The AI operations analyst",
+    description:
+      "Diagnose your operations. Prescribe what's next. The AI analyst for invoices, contracts, and SOPs.",
+    url: "https://cadence.ai",
+    siteName: "Cadence",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
+    title: "Cadence — The AI operations analyst",
+    description:
+      "Diagnose your operations. Prescribe what's next. The AI analyst for invoices, contracts, and SOPs.",
   },
 };
 
@@ -45,8 +59,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {children}
-        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
