@@ -39,9 +39,11 @@ export function LogoMark({ className }: { className?: string }) {
 export function Logo({
   className,
   showWordmark = true,
+  wordmarkClassName,
 }: {
   className?: string;
   showWordmark?: boolean;
+  wordmarkClassName?: string;
 }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
@@ -49,7 +51,12 @@ export function Logo({
         <LogoMark />
       </span>
       {showWordmark && (
-        <span className="text-[17px] font-semibold tracking-tight text-foreground">
+        <span
+          className={cn(
+            "text-[17px] font-semibold tracking-tight text-foreground",
+            wordmarkClassName,
+          )}
+        >
           Cadence
         </span>
       )}

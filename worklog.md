@@ -136,3 +136,43 @@ Task: QA sweep + new features (back-to-top, comparison section, animated counter
 - **Comparison section has no `id`** — not needed for current nav, but could add `id="compare"` + a nav link if desired.
 - **Animated counters only fire once** — `useInView` disconnects after first intersection (intentional, prevents re-trigger on scroll up/down). This is correct behavior.
 - **Recommended next steps**: (a) add a "logos as SVG" row for more credible trust bar, (b) add keyboard shortcut hints to the command palette items, (c) add a sticky demo CTA that appears after scrolling past the hero, (d) add OpenGraph image generation via Next.js metadata, (e) consider adding a short "stats in context" mini-section explaining what each number means, (f) add a cookie/consent banner for compliance polish.
+
+---
+Task ID: 4
+Agent: orchestrator (cron webDevReview)
+Task: QA sweep + new features (sticky demo CTA, use-cases section, cookie consent) + styling polish (command palette kbd footer, footer gradient wordmark).
+
+## Current project status / assessment
+- Project stable from round 3: 0 console errors, all APIs 200, lint clean, 11 sections render, all interactive features working.
+- QA confirmed: full page scroll (top→bottom→top) with 0 errors. All sections, nav, footer, command palette, mobile menu, back-to-top present.
+
+## Completed modifications / verification results
+
+### New features
+1. **Sticky demo CTA** (`sticky-demo-cta.tsx`) — Fixed bottom conversion bar that slides in via AnimatePresence once user scrolls past hero (~1 viewport height). Hides when final CTA section is in view (avoids redundancy). Contains pulsing live dot, "Try the live demo" text, and "Launch demo →" link to #demo. **Anti-overlap logic**: checks localStorage for cookie consent — won't show until the cookie banner is dismissed, preventing both fixed-bottom bars from stacking. Verified: scrolled to 900px → appeared (opacity 1, display flex), Launch demo link → #demo. VLM confirmed: "clean, well-spaced, no overlap."
+2. **"Built for" use-cases section** (`use-cases.tsx`) — New section with 3 persona cards: Finance & AP, Operations, Procurement & Legal. Each card has an icon, role title, tagline, and 3 bullet points describing what Cadence does for that team. Uses the card-glow hover effect (cursor-tracking radial). Inserted between LiveDemo and Testimonial. VLM confirmed: "3 cards visible with icons, taglines, bullet points, hover glow, no defects."
+3. **Cookie consent banner** (`cookie-consent.tsx`) — Fixed bottom banner appearing after 1.2s delay (post-hero-animation). Cookie icon + privacy copy + Decline/Accept buttons. Choice persisted to localStorage (`cadence:cookie-consent`), only shows once per visitor. Verified: Accept clicked → localStorage set to "accepted" → banner dismissed → sticky CTA then allowed to show.
+
+### Styling enhancements
+4. **Command palette keyboard footer** — Added a footer row to the ⌘K palette with 3 kbd badges: `↑↓ navigate`, `↵ select`, `esc close` (esc hidden on mobile, sm:flex). Verified: 3 kbd elements present in the dialog footer.
+5. **Footer gradient wordmark** — The "Cadence" wordmark in the footer now uses `bg-gradient-to-r from-foreground via-foreground/70 to-foreground/30 bg-clip-text text-transparent` for a subtle fade. Fixed an issue where the custom `.text-gradient-flow` CSS utility wasn't winning the cascade (switched to inline Tailwind gradient classes which work reliably). Verified: WebkitBackgroundClip="text", WebkitTextFillColor="rgba(0,0,0,0)".
+6. **Footer ⌘K hint** — Added "Press ⌘K anytime to jump" hint with a kbd badge below the theme toggle in the footer, increasing command palette discoverability.
+
+### Bug fix
+7. **Sticky CTA / cookie banner overlap** — Initial implementation had both fixed-bottom elements competing for the same space. Fixed by gating the sticky CTA on cookie consent being decided (localStorage check), so they never show simultaneously.
+
+### Verification (agent-browser + VLM)
+- 0 console errors across full scroll session (hooked console.error, scrolled top→bottom→top, 0 errors).
+- Sticky CTA: appears at scrollY 900 (past hero), opacity 1, Launch demo → #demo. VLM: "clean, no overlap." ✓
+- Use-cases section: 3 persona cards with icons, taglines, bullets, card-glow hover. VLM: "no visual defects." ✓
+- Cookie consent: Accept → localStorage "accepted" → banner dismissed. ✓
+- Command palette footer: 3 kbd badges (↑↓, ↵, esc). ✓
+- Footer gradient wordmark: clip=text, fill=transparent. ✓
+- Count-up animation still works (1.2M+, 6.2 hrs, 73%). ✓
+- Chat textarea present. ✓
+- Lint: clean (0 errors, 0 warnings). ✓
+
+## Unresolved issues / risks + next-phase recommendations
+- **`.text-gradient-flow` custom CSS utility still not winning cascade** — the inline Tailwind gradient classes are used instead as a reliable workaround. The custom utility could be debugged (likely a Tailwind v4 `@layer utilities` + `background-clip: text` specificity issue) but inline classes work fine.
+- **Cookie banner only appears once** — intentional (localStorage), but means the VLM/browser test in subsequent rounds won't see it unless localStorage is cleared.
+- **Recommended next steps**: (a) add a "changelog/what's new" mini-section or badge, (b) add a dedicated "security & compliance" section with SOC 2 / SSO badges, (c) add subtle scroll-triggered number counters to the use-cases section (e.g., "6 hrs saved" per persona), (d) add a blog/resources teaser section, (e) add OpenGraph image generation via Next.js metadata `opengraph-image`, (f) add a "compare with alternatives" expandable detail in the comparison section, (g) add keyboard navigation for the demo tabs (←/→ to switch).

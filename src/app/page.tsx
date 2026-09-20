@@ -4,6 +4,7 @@ import { TrustBar } from "@/components/site/trust-bar";
 import { FeaturesBento } from "@/components/site/features-bento";
 import { HowItWorks } from "@/components/site/how-it-works";
 import { LiveDemo } from "@/components/site/live-demo";
+import { UseCases } from "@/components/site/use-cases";
 import { Testimonial } from "@/components/site/testimonial";
 import { Comparison } from "@/components/site/comparison";
 import { Pricing } from "@/components/site/pricing";
@@ -12,6 +13,8 @@ import { CTAEmail } from "@/components/site/cta-email";
 import { Footer } from "@/components/site/footer";
 import { CommandPalette } from "@/components/site/command-palette";
 import { BackToTop } from "@/components/site/back-to-top";
+import { StickyDemoCTA } from "@/components/site/sticky-demo-cta";
+import { CookieConsent } from "@/components/site/cookie-consent";
 import { SectionDivider } from "@/components/site/section-divider";
 
 export default function Home() {
@@ -28,6 +31,8 @@ export default function Home() {
         <SectionDivider />
         <LiveDemo />
         <SectionDivider />
+        <UseCases />
+        <SectionDivider />
         <Testimonial />
         <SectionDivider />
         <Comparison />
@@ -41,6 +46,8 @@ export default function Home() {
       <Footer />
       <CommandPalette />
       <BackToTop />
+      <StickyDemoCTA />
+      <CookieConsent />
     </div>
   );
 }

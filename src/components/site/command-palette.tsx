@@ -189,6 +189,32 @@ export function CommandPalette() {
               ))}
           </CommandGroup>
         </CommandList>
+        {/* keyboard hint footer */}
+        <div className="flex items-center justify-between border-t border-border px-3 py-2">
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground/60">
+            <span className="flex items-center gap-1">
+              <kbd className="inline-flex h-4 items-center rounded border border-border bg-secondary px-1 font-mono text-[10px]">
+                ↑↓
+              </kbd>
+              navigate
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="inline-flex h-4 items-center rounded border border-border bg-secondary px-1 font-mono text-[10px]">
+                ↵
+              </kbd>
+              select
+            </span>
+            <span className="hidden items-center gap-1 sm:flex">
+              <kbd className="inline-flex h-4 items-center rounded border border-border bg-secondary px-1 font-mono text-[10px]">
+                esc
+              </kbd>
+              close
+            </span>
+          </div>
+          <span className="text-[11px] text-muted-foreground/50">
+            Cadence
+          </span>
+        </div>
       </CommandDialog>
     </>
   );
