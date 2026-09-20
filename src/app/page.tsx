@@ -2,6 +2,7 @@ import { Nav } from "@/components/site/nav";
 import { Hero } from "@/components/site/hero";
 import { TrustBar } from "@/components/site/trust-bar";
 import { StatsContext } from "@/components/site/stats-context";
+import { MaturityAssessment } from "@/components/site/maturity-assessment";
 import { FeaturesBento } from "@/components/site/features-bento";
 import { HowItWorks } from "@/components/site/how-it-works";
 import { LiveDemo } from "@/components/site/live-demo";
@@ -56,6 +57,8 @@ export default function Home() {
           <Roadmap />
           <SectionDivider />
           <Pricing />
+          <SectionDivider />
+          <MaturityAssessment />
           <SectionDivider />
           <FAQ />
           <SectionDivider />

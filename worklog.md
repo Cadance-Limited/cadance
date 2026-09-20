@@ -363,3 +363,39 @@ Task: QA sweep + new features (stats-in-context section, contact-sales modal, gl
 - **Glossary terms only in 3 places** — "3-way match" (hero), "SOPs" + "anomalies" (FAQ). Could apply to more terms (AP, SLA, Net terms) in the use-cases/blog sections, but those use string arrays which can't wrap JSX components. Would need to convert more text to JSX.
 - **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach. Low priority.
 - **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a "compare with alternatives" section naming specific competitor products (legal risk — careful), (c) add a glossary index modal listing all defined terms, (d) convert more blog/use-cases text to JSX to allow glossary terms, (e) add a "guided tour" onboarding flow for first-time visitors, (f) add a dark/light theme preview toggle in the pricing section, (g) add a "maturity assessment" interactive widget (quiz-style), (h) add micro-animations to the stats-context cards (count-up on the big numbers).
+
+---
+Task ID: 10
+Agent: orchestrator (cron webDevReview)
+Task: QA sweep + new features (maturity assessment quiz, glossary index modal, count-up on stats-context) + styling polish (glossary trigger in footer).
+
+## Current project status / assessment
+- Project stable from round 9: 0 console errors, all APIs 200, lint clean, 16 sections render, all interactive features working.
+- Dev server verified up (200 before QA). QA confirmed: full page scroll (top→bottom→top) with 0 errors. All sections, nav, footer, command palette, mobile menu, back-to-top, sticky CTA, shortcuts overlay, changelog modal, contact-sales modal present.
+
+## Completed modifications / verification results
+
+### New features
+1. **Interactive maturity assessment widget** (`maturity-assessment.tsx`) — New section with a 3-question quiz: (1) invoice volume/month, (2) contract review time, (3) anomaly tooling. Each option has a score 1–4. Animated progress bar fills as you progress. AnimatePresence transitions between intro → questions → result. Result is banded by total score: Optimized (≤4), Maturing (5–7), Strained (8–10), Critical (11–12) — each with a tailored headline + detail + CTA. Retake button resets. Verified: answered 3+3+3=9 → "Strained" band, "Your team is the bottleneck.", Score: 9/12. VLM confirmed result screen clean.
+2. **Glossary index modal** (`glossary-index.tsx` + `glossary-trigger.tsx`) — A searchable modal listing all 6 defined glossary terms (3-way match, Net terms, Anomaly, AP, SLA, SOP) with full definitions. Search input filters terms by name or definition text. Triggered by a "Glossary" button in the footer (next to the ⌘K / ? hints). Verified: clicked "Glossary" → modal opened with 6 terms + search; typed "net" → filtered to 1 term ("Net terms").
+3. **Count-up animation on stats-context** (`stats-context.tsx` rewrite) — The 4 big numbers (1.2M+, 6.2 hrs, 73%, 98%) now animate from 0 to target on scroll-into-view via the existing `useCountUp` + `useInView` hooks. Consistent with the trust-bar count-up from round 3.
+
+### Styling enhancements
+4. **Glossary trigger in footer** — Added a "Glossary" button (BookOpen icon) to the footer's shortcuts hint row, separated by a · dot. Opens the glossary index modal.
+5. **Assessment progress bar** — Cadence-green bar fills proportionally (0% → 25% → 50% → 75% → 100%) as the user progresses through the quiz.
+6. **Assessment option selected state** — Selected option gets cadence-green border + bg-cadence/[0.06] + Check icon; unselected gets a hollow circle.
+7. **Page now has 17 sections** — MaturityAssessment added between Pricing and FAQ.
+
+### Verification (agent-browser + VLM)
+- 0 console errors across full scroll session (hooked console.error, scrolled top→bottom→top, 0 errors).
+- Maturity assessment: Start → Q1 (4 options) → Q2 → Q3 → result "Strained" band, "Your team is the bottleneck.", Score 9/12. VLM confirmed result screen clean. ✓
+- Glossary index: clicked footer "Glossary" → modal opened with 6 terms + search input; typed "net" → filtered to 1 term. ✓
+- Count-up on stats-context: wired via useCountUp + useInView (same pattern as trust-bar). ✓
+- Page now has 17 sections. ✓
+- Lint: clean (0 errors, 0 warnings). ✓
+
+## Unresolved issues / risks + next-phase recommendations
+- **Guided tour onboarding not yet built** — was in the original todos but deferred to keep the round focused. Could add a "first-visit" tour that highlights the demo, command palette, and assessment.
+- **Glossary terms still only in 3 inline places** — the glossary index modal lists all 6, but inline hover terms are only on "3-way match" (hero), "SOPs" + "anomalies" (FAQ). More could be added but requires converting string-array text to JSX.
+- **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach. Low priority.
+- **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a guided tour onboarding for first-time visitors, (c) add a "compare with alternatives" section (careful re: competitor naming), (d) add micro-animations to the assessment result (confetti or checkmark pop), (e) add a "share your result" button on the assessment, (f) add more inline glossary terms across the page, (g) add a "recently viewed" indicator in the command palette, (h) add a dark/light theme preview toggle in the pricing section.

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Check, Loader2, Mail } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
+import { GlossaryTrigger } from "./glossary-trigger";
 import { useToast } from "@/hooks/use-toast";
 
 const columns = [
@@ -96,6 +97,8 @@ export function Footer() {
                 </kbd>
                 for shortcuts
               </span>
+              <span className="text-muted-foreground/30">·</span>
+              <GlossaryTrigger />
             </div>
           </div>
           {columns.map((col) => (
