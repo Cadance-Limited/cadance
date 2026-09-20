@@ -176,3 +176,40 @@ Task: QA sweep + new features (sticky demo CTA, use-cases section, cookie consen
 - **`.text-gradient-flow` custom CSS utility still not winning cascade** — the inline Tailwind gradient classes are used instead as a reliable workaround. The custom utility could be debugged (likely a Tailwind v4 `@layer utilities` + `background-clip: text` specificity issue) but inline classes work fine.
 - **Cookie banner only appears once** — intentional (localStorage), but means the VLM/browser test in subsequent rounds won't see it unless localStorage is cleared.
 - **Recommended next steps**: (a) add a "changelog/what's new" mini-section or badge, (b) add a dedicated "security & compliance" section with SOC 2 / SSO badges, (c) add subtle scroll-triggered number counters to the use-cases section (e.g., "6 hrs saved" per persona), (d) add a blog/resources teaser section, (e) add OpenGraph image generation via Next.js metadata `opengraph-image`, (f) add a "compare with alternatives" expandable detail in the comparison section, (g) add keyboard navigation for the demo tabs (←/→ to switch).
+
+---
+Task ID: 5
+Agent: orchestrator (cron webDevReview)
+Task: QA sweep + new features (security section, demo tab keyboard nav, "What's new" badge) + styling polish (use-cases counters, demo tab active indicator).
+
+## Current project status / assessment
+- Project stable from round 4: 0 console errors, all APIs 200, lint clean, 11 sections render, all interactive features working.
+- QA confirmed: full page scroll (top→bottom→top) with 0 errors. All sections, nav, footer, command palette, mobile menu, back-to-top, sticky CTA present.
+
+## Completed modifications / verification results
+
+### New features
+1. **Security & compliance section** (`security.tsx`) — New section with 6 compliance badge cards: SOC 2 Type II, SSO & SCIM, Data encryption (AES-256/TLS 1.3), No model training, Audit log, DPA & GDPR. Each card has an icon, label, and detail line. Uses the card-glow hover effect. Closing CTA: "Reach out — we reply within one business day." Inserted between Comparison and Pricing. VLM confirmed: "6 compliance cards, 3-column grid, no defects."
+2. **Keyboard navigation for demo tabs** (`live-demo.tsx`) — ArrowLeft/ArrowRight now switches between Diagnostic chat and Document intelligence tabs. Key logic: ignores keypresses when typing in input/textarea, only triggers when demo section is centered in viewport (40-60% viewport band). Added a "switch with ← →" keyboard hint below the tabs. Verified: ArrowRight switched chat→docs, ArrowLeft switched docs→chat.
+3. **"What's new" badge in nav** (`nav.tsx`) — Added a pulsing-dot "What's new" badge next to the logo (md+ only), linking to #features. Increases product-update discoverability.
+
+### Styling enhancements
+4. **Animated stat counters in use-cases** (`use-cases.tsx`) — Each persona card now has an animated stat box (count-up on scroll-into-view): Finance & AP "6.2 hrs saved per week", Operations "73% faster cycle time", Procurement & Legal "11→2 days review time". Uses `useCountUp` + `useInView` hooks. VLM confirmed: "6.2 hrs, 73%, 11→2 days clearly visible."
+5. **Demo tab active indicator** (`live-demo.tsx`) — Active tab now has an animated `layoutId` cadence-green dot indicator below it, plus the existing bg-foreground highlight. Adds a polished spring-animated transition between tabs.
+6. **Command palette nav items expanded** — Added "Built for" (#use-cases) and "Security & compliance" (#security) to the ⌘K palette nav items (now 8 items).
+7. **Nav "Security" link** — Added Security to the desktop nav links array for scroll-spy + direct access.
+
+### Verification (agent-browser + VLM)
+- 0 console errors across full scroll session (hooked console.error, scrolled top→bottom→top, 0 errors).
+- Security section: found via #security id, VLM confirms "6 compliance cards, 3-column grid, no defects." ✓
+- Demo tab keyboard nav: ArrowRight switched "Diagnostic chat"→"Document intelligence" (docs controls appeared), ArrowLeft switched back. ✓
+- "What's new" badge: present in nav text. ✓
+- Use-cases counters: animated to final values (6.2, 73, 11) on scroll-into-view. VLM confirms all 3 stats visible. ✓
+- Nav has Security link. ✓
+- Command palette has 8 nav items now (added Built for + Security). ✓
+- Lint: clean (0 errors, 0 warnings). ✓
+
+## Unresolved issues / risks + next-phase recommendations
+- **Cookie banner reappears each new browser session** — localStorage persists per-browser, so the VLM screenshots in fresh sessions see it. This is expected behavior, not a bug. Could add a "manage preferences" link in the footer for returning visitors who declined.
+- **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach for footer wordmark. Low priority.
+- **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a "blog/resources" teaser section with 3 article cards, (c) add a comparison "expandable detail" — click a row to see a 1-sentence rationale, (d) add a dedicated "integrations" grid section (QuickBooks, NetSuite, DocuSign, Slack logos), (e) add a "stats in context" mini-section explaining what each trust-bar number means, (f) add keyboard shortcut "?" to show all available shortcuts, (g) add a subtle "scroll to explore" indicator in the hero.
