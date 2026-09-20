@@ -4,6 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { ArrowUp, RotateCcw, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { onPrompt } from "@/lib/prompt-bus";
 import { cn } from "@/lib/utils";
 
 type Role = "user" | "assistant";
@@ -78,6 +79,18 @@ export function DemoChat() {
       inputRef.current?.focus();
     }
   }
+
+  // Keep a ref to the latest `send` so the prompt-bus listener never goes stale.
+  const sendRef = React.useRef(send);
+  sendRef.current = send;
+
+  // Listen for prompts dispatched from the command palette.
+  React.useEffect(() => {
+    return onPrompt((prompt) => {
+      sendRef.current(prompt);
+      inputRef.current?.focus();
+    });
+  }, []);
 
   function reset() {
     setMessages([WELCOME]);

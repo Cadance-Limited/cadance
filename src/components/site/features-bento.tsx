@@ -91,14 +91,20 @@ export function FeaturesBento() {
 
 function BentoCard({ feature, index }: { feature: Feature; index: number }) {
   const { icon: Icon, title, description, span = "default", visual } = feature;
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.5, delay: (index % 3) * 0.06 }}
+      onMouseMove={onMove}
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 transition-colors hover:border-foreground/20",
+        "card-glow group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 transition-colors hover:border-foreground/25",
         span === "wide" && "md:col-span-2",
       )}
     >

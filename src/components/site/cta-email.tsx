@@ -4,6 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useWaitlistCount } from "@/hooks/use-waitlist-count";
 
 export function CTAEmail() {
   const [email, setEmail] = React.useState("");
@@ -12,6 +13,7 @@ export function CTAEmail() {
     "idle" | "loading" | "done" | "error"
   >("idle");
   const { toast } = useToast();
+  const waitlistCount = useWaitlistCount();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,11 +54,11 @@ export function CTAEmail() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 sm:p-14"
+          className="noise-overlay relative overflow-hidden rounded-3xl border border-border bg-card p-8 sm:p-14"
         >
           {/* ambient glow */}
           <div className="pointer-events-none absolute inset-0 -z-10 bg-grid [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000_50%,transparent_100%)] opacity-60" />
-          <div className="pointer-events-none absolute left-1/2 top-0 -z-10 h-64 w-[640px] -translate-x-1/2 halo-conic opacity-60" />
+          <div className="pointer-events-none absolute left-1/2 top-0 -z-10 h-64 w-[640px] -translate-x-1/2 halo-conic animate-cadence-aurora opacity-60" />
 
           <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/40 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
@@ -66,6 +68,12 @@ export function CTAEmail() {
               </span>
               Private beta — rolling out now
             </span>
+            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-semibold tabular-nums text-foreground">
+                {waitlistCount.toLocaleString()}+
+              </span>
+              operators already on the waitlist
+            </div>
             <h2 className="mt-5 text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-5xl sm:leading-[1.05]">
               Diagnose your operations.
               <br />

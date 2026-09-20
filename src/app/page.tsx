@@ -9,6 +9,7 @@ import { Pricing } from "@/components/site/pricing";
 import { FAQ } from "@/components/site/faq";
 import { CTAEmail } from "@/components/site/cta-email";
 import { Footer } from "@/components/site/footer";
+import { CommandPalette } from "@/components/site/command-palette";
 
 export default function Home() {
   return (
@@ -26,6 +27,7 @@ export default function Home() {
         <CTAEmail />
       </main>
       <Footer />
+      <CommandPalette />
     </div>
   );
 }

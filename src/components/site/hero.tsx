@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Check, FileText, Sparkles, Zap } from "lucide-react";
 import { Eyebrow } from "./section-heading";
+import { useWaitlistCount } from "@/hooks/use-waitlist-count";
 import { cn } from "@/lib/utils";
 
 const reasoningSteps = [
@@ -13,12 +14,13 @@ const reasoningSteps = [
 ];
 
 export function Hero() {
+  const waitlistCount = useWaitlistCount();
   return (
     <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28">
       {/* Ambient layers */}
       <div className="pointer-events-none absolute inset-0 -z-10 bg-grid [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_60%,transparent_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] glow-radial" />
-      <div className="pointer-events-none absolute left-1/2 top-24 -z-10 h-[340px] w-[680px] -translate-x-1/2 halo-conic opacity-70" />
+      <div className="pointer-events-none absolute left-1/2 top-24 -z-10 h-[340px] w-[680px] -translate-x-1/2 halo-conic animate-cadence-aurora opacity-70" />
 
       <div className="mx-auto max-w-6xl px-6">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
@@ -44,7 +46,9 @@ export function Hero() {
           >
             Diagnose your operations.
             <br />
-            <span className="text-muted-foreground">Prescribe what&apos;s next.</span>
+            <span className="bg-gradient-to-r from-foreground via-foreground/80 to-foreground/40 bg-clip-text text-transparent">
+              Prescribe what&apos;s next.
+            </span>
           </motion.h1>
 
           <motion.p
@@ -88,6 +92,40 @@ export function Hero() {
           >
             No login. No setup. No credit card.
           </motion.p>
+
+          {/* social proof */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.36 }}
+            className="mt-7 flex items-center justify-center gap-3"
+          >
+            <div className="flex -space-x-2">
+              {[
+                "from-emerald-400/30 to-emerald-600/20",
+                "from-zinc-400/30 to-zinc-600/20",
+                "from-amber-400/30 to-amber-600/20",
+                "from-rose-400/30 to-rose-600/20",
+                "from-cyan-400/30 to-cyan-600/20",
+              ].map((g, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-gradient-to-br text-[10px] font-semibold text-foreground/70",
+                    g,
+                  )}
+                >
+                  {["MV", "JK", "AR", "TL", "SP"][i]}
+                </span>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground tabular-nums">
+                {waitlistCount.toLocaleString()}+
+              </span>{" "}
+              operators on the waitlist
+            </p>
+          </motion.div>
         </div>
 
         {/* Hero mockup — diagnostic panel */}
@@ -107,7 +145,7 @@ export function Hero() {
 
 function HeroPanel() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card/80 shadow-[0_2px_0_0_oklch(0.5_0_0/0.05),0_24px_60px_-20px_oklch(0_0_0/0.5)] backdrop-blur-xl">
+    <div className="noise-overlay overflow-hidden rounded-2xl border border-border bg-card/80 shadow-[0_2px_0_0_oklch(0.5_0_0/0.05),0_24px_60px_-20px_oklch(0_0_0/0.5)] backdrop-blur-xl">
       {/* window chrome */}
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <div className="flex items-center gap-2">
