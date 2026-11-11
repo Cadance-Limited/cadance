@@ -60,31 +60,31 @@ function scoreToResult(total: number): Result {
       band: "Optimized",
       headline: "You're running a tight ship.",
       detail:
-        "Your operations are already lean. Cadence would mainly add a second layer of anomaly catch and free up the senior reviewer for harder calls.",
-      cta: "See what Cadence watches that you don't",
+        "Your volume and existing controls are well-balanced. Cadence can serve as a second-pass verification layer on unfamiliar vendor contracts and non-standard invoices.",
+      cta: "Test the document analyzer",
     };
   if (total <= 7)
     return {
       band: "Maturing",
-      headline: "You've got controls — and friction.",
+      headline: "You've got controls — and manual friction.",
       detail:
-        "You're catching the big issues, but the manual work is costing you. Cadence typically recovers 6 hours per week per team at this stage.",
-      cta: "See where Cadence finds the time",
+        "You have baseline processes in place, but manual spot-checks and multi-day reviews create queue drag. Structured field extraction and PO-matching rules can streamline your first-pass triage.",
+      cta: "Try a workflow diagnostic",
     };
   if (total <= 10)
     return {
       band: "Strained",
-      headline: "Your team is the bottleneck.",
+      headline: "Manual review is becoming the bottleneck.",
       detail:
-        "The volume has outgrown the process. Cadence can take the 3-way match and contract first-pass off your plate — usually a 70%+ cycle-time reduction.",
-      cta: "See the prescription for your stage",
+        "At this volume, reviewing every routine invoice and agreement from scratch slows down close and procurement cycles. Separating standard PO-backed items from true exceptions is the highest-leverage next move.",
+      cta: "See the diagnostic demo",
     };
   return {
     band: "Critical",
-    headline: "You're losing hours every week.",
+    headline: "High volume with manual spot-checks creates compounding backlog.",
     detail:
-      "At this volume with this tooling, issues compound quietly. Cadence's first diagnostic typically surfaces 8–15 anomalies in week one — most of them costing real money.",
-    cta: "Run your first diagnostic free",
+      "Processing high monthly volume without automated field verification increases the risk of missed fee drift, duplicate billing, and delayed contract cycles. Start by triaging high-variance documents systematically.",
+    cta: "Run a sample diagnostic",
   };
 }
 
@@ -102,6 +102,9 @@ export function MaturityAssessment() {
     setAnswers({});
     setStep(-1);
   };
+
+  const total = Object.values(answers).reduce((a, b) => a + b, 0);
+  const result = step === 3 ? scoreToResult(total) : null;
 
   const share = () => {
     const text = `My ops maturity: ${result?.band} — ${result?.headline} (Score: ${total}/12). Take the check at Cadence.`;
@@ -126,9 +129,6 @@ export function MaturityAssessment() {
     }
   };
 
-  const total = Object.values(answers).reduce((a, b) => a + b, 0);
-  const result = step === 3 ? scoreToResult(total) : null;
-
   return (
     <section
       id="assessment"
@@ -144,7 +144,7 @@ export function MaturityAssessment() {
             </span>
           }
           title="Where does your operations stack actually stand?"
-          description="Three questions. No email required. Get a read on your stage and what Cadence would do for you at it."
+          description="Three questions. No email required. Get a read on your stage and where structured document triage fits."
         />
 
         <div className="mt-10 overflow-hidden rounded-2xl border border-border bg-card">
@@ -160,7 +160,7 @@ export function MaturityAssessment() {
             />
           </div>
 
-          <div className="p-6 sm:p-8">
+          <div className="p-6 sm:p-8" aria-live="polite">
             <AnimatePresence mode="wait">
               {step === -1 ? (
                 <motion.div
@@ -179,11 +179,12 @@ export function MaturityAssessment() {
                       Take the 30-second check
                     </h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Answer three questions about your AP, contracts, and
-                      anomaly tooling. Get a stage read + a tailored prescription.
+                      Answer three questions about your AP volume, contract turnaround,
+                      and anomaly review workflow.
                     </p>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setStep(0)}
                     className="shimmer-border inline-flex h-10 items-center gap-1.5 rounded-lg bg-foreground px-5 text-sm font-medium text-background transition-all hover:translate-y-[-1px]"
                   >
@@ -214,6 +215,7 @@ export function MaturityAssessment() {
                       return (
                         <button
                           key={opt.label}
+                          type="button"
                           onClick={() => select(questions[step].id, opt.score)}
                           className={cn(
                             "flex items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-all",
@@ -274,6 +276,7 @@ export function MaturityAssessment() {
                       <ArrowRight className="h-3.5 w-3.5" />
                     </a>
                     <button
+                      type="button"
                       onClick={share}
                       className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/40 px-5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
                     >
@@ -281,6 +284,7 @@ export function MaturityAssessment() {
                       Share
                     </button>
                     <button
+                      type="button"
                       onClick={reset}
                       className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/40 px-5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
                     >

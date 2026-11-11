@@ -5,18 +5,18 @@ import { ArrowRight } from "lucide-react";
 import { SectionHeading } from "./section-heading";
 
 const integrations = [
-  { name: "QuickBooks", category: "Accounting", glyph: "QB" },
-  { name: "NetSuite", category: "ERP", glyph: "NS" },
-  { name: "DocuSign", category: "Signatures", glyph: "DS" },
-  { name: "Slack", category: "Alerts", glyph: "Sl" },
-  { name: "Xero", category: "Accounting", glyph: "Xr" },
-  { name: "Notion", category: "SOPs", glyph: "Nt" },
-  { name: "Gmail", category: "Inbox", glyph: "Gm" },
-  { name: "Stripe", category: "Payments", glyph: "St" },
-  { name: "AWS", category: "Storage", glyph: "Aw" },
-  { name: "Drive", category: "Docs", glyph: "Dr" },
-  { name: "Salesforce", category: "CRM", glyph: "SF" },
-  { name: "Zapier", category: "Automation", glyph: "Zp" },
+  { name: "QuickBooks", category: "Accounting · Roadmap", glyph: "QB" },
+  { name: "NetSuite", category: "ERP · Roadmap", glyph: "NS" },
+  { name: "DocuSign", category: "Signatures · Roadmap", glyph: "DS" },
+  { name: "Slack", category: "Alerts · Roadmap", glyph: "Sl" },
+  { name: "Xero", category: "Accounting · Roadmap", glyph: "Xr" },
+  { name: "Notion", category: "SOPs · Roadmap", glyph: "Nt" },
+  { name: "Gmail", category: "Inbox · Roadmap", glyph: "Gm" },
+  { name: "Stripe", category: "Payments · Roadmap", glyph: "St" },
+  { name: "AWS S3", category: "Storage · Roadmap", glyph: "Aw" },
+  { name: "Drive", category: "Docs · Roadmap", glyph: "Dr" },
+  { name: "Salesforce", category: "CRM · Roadmap", glyph: "SF" },
+  { name: "n8n / Webhooks", category: "Automation · Roadmap", glyph: "n8" },
 ];
 
 export function Integrations() {
@@ -27,9 +27,9 @@ export function Integrations() {
     >
       <div className="mx-auto max-w-5xl px-6">
         <SectionHeading
-          eyebrow="Integrations"
-          title="Reads and writes back to the tools you already live in."
-          description="No CSV ferries. No copy-paste. Cadence connects to your systems of record and works both directions."
+          eyebrow="Integrations · Planned Roadmap"
+          title="Designed to connect with the tools your team lives in."
+          description="Today's preview supports direct document text and SSRF-validated URL ingestion. Native OAuth and webhook connectors for the platforms below are on the roadmap."
         />
 
         <div className="mt-12 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 md:gap-4">
@@ -76,13 +76,13 @@ export function Integrations() {
           className="mt-10 flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-secondary/20 px-6 py-5 text-center sm:flex-row sm:text-left"
         >
           <p className="text-sm text-muted-foreground">
-            Need an integration that&apos;s not listed?
+            Want to prioritize a specific ERP or accounting connector for your workflow?
           </p>
           <a
             href="#cta"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
           >
-            Request it — most ship in under a week
+            Share your stack on the waitlist
             <ArrowRight className="h-3.5 w-3.5" />
           </a>
         </motion.div>

@@ -16,23 +16,29 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cadence.ai";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || "https://cadence.ai",
-  ),
-  title: "Cadence — The AI operations analyst",
+  metadataBase: new URL(appUrl),
+  title: {
+    default: "Cadence — The AI operations analyst",
+    template: "%s · Cadence",
+  },
   description:
-    "Cadence diagnoses your operations from invoices, contracts, and SOPs, then prescribes the workflow fixes that matter. Built for business teams.",
+    "Cadence diagnoses operational workflows from invoices, contracts, and SOPs, then prescribes the next moves with explicit evidence and assumptions.",
   keywords: [
     "AI operations",
-    "workflow automation",
+    "workflow diagnostics",
     "invoice analysis",
     "contract review",
-    "business diagnostics",
-    "AI analyst",
+    "3-way match",
+    "operations analyst",
     "Cadence",
   ],
-  authors: [{ name: "Cadence" }],
+  authors: [{ name: "Cadence Labs" }],
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: "/logo.svg",
     shortcut: "/logo.svg",
@@ -40,16 +46,17 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Cadence — The AI operations analyst",
     description:
-      "Diagnose your operations. Prescribe what's next. The AI analyst for invoices, contracts, and SOPs.",
-    url: "https://cadence.ai",
+      "Diagnose your operations. Prescribe what's next. Interactive diagnostic chat and document intelligence for invoices, contracts, and SOPs.",
+    url: appUrl,
     siteName: "Cadence",
     type: "website",
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
     title: "Cadence — The AI operations analyst",
     description:
-      "Diagnose your operations. Prescribe what's next. The AI analyst for invoices, contracts, and SOPs.",
+      "Diagnose your operations. Prescribe what's next. Interactive diagnostic chat and document intelligence for invoices, contracts, and SOPs.",
   },
 };
 

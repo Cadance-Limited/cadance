@@ -19,70 +19,70 @@ const rows: {
     dashboards: "yes",
     cadence: "yes",
     detail:
-      "Both show you the number. The difference starts when you ask why it moved.",
+      "Both surface operational metrics. The difference starts when you need to diagnose unstructured documents.",
   },
   {
-    label: "Diagnoses why it happened",
+    label: "Diagnoses why a document or workflow stalled",
     dashboards: "no",
     cadence: "yes",
     detail:
-      "Dashboards stop at the chart. Cadence traces the chain — the records, the rules, the bottleneck — and shows its work.",
+      "Dashboards stop at the chart. Cadence structures the supplied evidence, rules, and bottlenecks into a clear diagnostic trace.",
   },
   {
-    label: "Reads invoices, contracts & SOPs",
+    label: "Reads pasted invoices, contracts & SOPs",
     dashboards: "no",
     cadence: "yes",
     detail:
-      "Drop in a PDF or paste text. Cadence extracts the fields that matter and flags the ones that don't add up.",
+      "Paste document text or provide an SSRF-validated public URL. Cadence extracts key fields and flags discrepancies.",
   },
   {
     label: "Prescribes ranked next moves",
     dashboards: "no",
     cadence: "yes",
     detail:
-      "Not vibes — a numbered list of moves, each with a rationale and an estimated hours-recovered figure.",
+      "Returns a numbered list of recommended actions with a one-sentence rationale tied to the supplied text.",
   },
   {
-    label: "Turns each move into a draft rule",
+    label: "Verifies invoice subtotal + tax arithmetic",
     dashboards: "no",
     cadence: "yes",
     detail:
-      "One click turns a prescription into a draft workflow rule wired to your approval queue.",
+      "Programmatically checks whether stated Subtotal + Tax equals the billed Total and flags undeclared surcharges or missing POs.",
   },
   {
-    label: "Flags anomalies before you ask",
-    dashboards: "partial",
-    cadence: "yes",
-    detail:
-      "Dashboards need you to build the alert. Cadence surfaces outliers — pricing drift, duplicate line items, term changes — on its own.",
-  },
-  {
-    label: "Talks to QuickBooks / NetSuite / Slack",
-    dashboards: "partial",
-    cadence: "yes",
-    detail:
-      "Cadence reads and writes back — no CSV ferries. Dashboards mostly read, and only what you wire up.",
-  },
-  {
-    label: "Explains its reasoning in plain English",
+    label: "Distinguishes supplied facts from assumptions",
     dashboards: "no",
     cadence: "yes",
     detail:
-      "Every Cadence answer comes with a visible reasoning trace. No black-box predictions.",
+      "Explicitly separates facts present in your input from operational assumptions, without inventing unverified metrics.",
   },
   {
-    label: "Setup in minutes, no data team",
+    label: "Deterministic fallback when external AI is offline",
     dashboards: "partial",
     cadence: "yes",
     detail:
-      "Connect an integration or paste a URL. No schema, no implementation project, no six-week onboarding.",
+      "Includes a built-in deterministic rule engine so document extraction and diagnostic triage remain available even without external LLM keys.",
+  },
+  {
+    label: "Native ERP & Slack OAuth connectors",
+    dashboards: "partial",
+    cadence: "partial",
+    detail:
+      "Pasted text and URL ingestion are live today in v1; direct two-way connectors for QuickBooks, NetSuite, and Slack are on the product roadmap.",
+  },
+  {
+    label: "Zero-setup interactive evaluation",
+    dashboards: "no",
+    cadence: "yes",
+    detail:
+      "Test both the diagnostic chat and document intelligence analyzer directly in the browser without creating an account.",
   },
 ];
 
 const cellConfig: Record<Cell, { icon: typeof Check; cls: string; label: string }> = {
   yes: { icon: Check, cls: "text-cadence", label: "Yes" },
   no: { icon: X, cls: "text-muted-foreground/40", label: "No" },
-  partial: { icon: Minus, cls: "text-muted-foreground/70", label: "Partial" },
+  partial: { icon: Minus, cls: "text-muted-foreground/70", label: "Partial / Roadmap" },
 };
 
 export function Comparison() {
@@ -94,7 +94,7 @@ export function Comparison() {
         <SectionHeading
           eyebrow="Cadence vs. dashboards"
           title="Dashboards describe. Cadence prescribes."
-          description="A dashboard tells you the number went up. Cadence tells you why, where the friction is, and the three moves that fix it. Click any row for the rationale."
+          description="A dashboard tells you a metric moved. Cadence inspects the underlying document or workflow question and outlines the next steps. Click any row for details."
         />
 
         <motion.div
@@ -134,6 +134,7 @@ export function Comparison() {
                 )}
               >
                 <button
+                  type="button"
                   onClick={() => setOpen(isOpen ? null : i)}
                   className="grid w-full grid-cols-[1fr_110px_110px] cursor-pointer items-center text-left transition-colors hover:bg-secondary/20 sm:grid-cols-[1fr_160px_160px]"
                   aria-expanded={isOpen}
@@ -179,17 +180,6 @@ export function Comparison() {
             );
           })}
         </motion.div>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-6 text-center text-sm text-muted-foreground"
-        >
-          The dashboard isn&apos;t dead — it just isn&apos;t enough. Cadence
-          sits on top of the tools you already have and does the thinking.
-        </motion.p>
       </div>
     </section>
   );

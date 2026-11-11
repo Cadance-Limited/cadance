@@ -9,24 +9,33 @@ import { Glossary } from "./glossary";
 import { cn } from "@/lib/utils";
 
 const reasoningSteps = [
-  "Parsed 1,284 AP records from Q3 · flagged 11 outliers",
-  "Cross-referenced vendor SLA terms against payment dates",
-  "Bottleneck located: manual 3-way match on invoices < $5k",
+  "Evaluated sample Q3 invoice batch · flagged 3 fee & term variances",
+  "Cross-referenced vendor payment terms against Net-30 baseline",
+  "Bottleneck identified: manual 3-way match on routine PO-backed invoices",
 ];
 
 export function Hero() {
   const waitlistCount = useWaitlistCount();
   const { scrollY } = useScroll();
-  // parallax: ambient layers drift up slower than the content as you scroll
   const gridY = useTransform(scrollY, [0, 600], [0, 80]);
   const glowY = useTransform(scrollY, [0, 600], [0, 50]);
   const haloY = useTransform(scrollY, [0, 600], [0, 120]);
+
   return (
     <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28">
       {/* Ambient layers (parallax) */}
-      <motion.div style={{ y: gridY }} className="pointer-events-none absolute inset-0 -z-10 bg-grid [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_60%,transparent_100%)]" />
-      <motion.div style={{ y: glowY }} className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] glow-radial" />
-      <motion.div style={{ y: haloY }} className="pointer-events-none absolute left-1/2 top-24 -z-10 h-[340px] w-[680px] -translate-x-1/2 halo-conic animate-cadence-aurora opacity-70" />
+      <motion.div
+        style={{ y: gridY }}
+        className="pointer-events-none absolute inset-0 -z-10 bg-grid [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_60%,transparent_100%)]"
+      />
+      <motion.div
+        style={{ y: glowY }}
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] glow-radial"
+      />
+      <motion.div
+        style={{ y: haloY }}
+        className="pointer-events-none absolute left-1/2 top-24 -z-10 h-[340px] w-[680px] -translate-x-1/2 halo-conic animate-cadence-aurora opacity-70"
+      />
 
       <div className="mx-auto max-w-6xl px-6">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
@@ -40,7 +49,7 @@ export function Hero() {
                 <span className="absolute inline-flex h-full w-full animate-cadence-pulse rounded-full bg-cadence" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cadence" />
               </span>
-              Private beta · diagnostic AI for ops
+              Technical preview · diagnostic AI for ops
             </Eyebrow>
           </motion.div>
 
@@ -99,20 +108,18 @@ export function Hero() {
             No login. No setup. No credit card.
           </motion.p>
 
-          {/* social proof */}
+          {/* Verified waitlist status / workflow badges */}
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.36 }}
             className="mt-7 flex items-center justify-center gap-3"
           >
-            <div className="flex -space-x-2">
+            <div className="flex -space-x-2" aria-hidden="true">
               {[
                 "from-emerald-400/30 to-emerald-600/20",
                 "from-zinc-400/30 to-zinc-600/20",
                 "from-amber-400/30 to-amber-600/20",
-                "from-rose-400/30 to-rose-600/20",
-                "from-cyan-400/30 to-cyan-600/20",
               ].map((g, i) => (
                 <span
                   key={i}
@@ -121,20 +128,26 @@ export function Hero() {
                     g,
                   )}
                 >
-                  {["MV", "JK", "AR", "TL", "SP"][i]}
+                  {["AP", "PR", "OP"][i]}
                 </span>
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground tabular-nums">
-                {waitlistCount.toLocaleString()}+
-              </span>{" "}
-              operators on the waitlist
+              {waitlistCount !== null && waitlistCount > 0 ? (
+                <>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {waitlistCount.toLocaleString()}
+                  </span>{" "}
+                  {waitlistCount === 1 ? "operator" : "operators"} registered on the waitlist
+                </>
+              ) : (
+                <>Built for AP, procurement, and operations workflows</>
+              )}
             </p>
           </motion.div>
         </div>
 
-        {/* Hero mockup — diagnostic panel */}
+        {/* Hero mockup — sample diagnostic panel */}
         <motion.div
           initial={{ opacity: 0, y: 28, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -184,9 +197,9 @@ function HeroPanel() {
             <span className="absolute inline-flex h-full w-full animate-cadence-pulse rounded-full bg-cadence" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cadence" />
           </span>
-          cadence · diagnostic session
+          cadence · sample diagnostic walkthrough
         </div>
-        <div className="text-[11px] text-muted-foreground/60">live</div>
+        <div className="text-[11px] text-muted-foreground/60">illustrative</div>
       </div>
 
       <div className="grid gap-px bg-border sm:grid-cols-[1.1fr_1fr]">
@@ -195,7 +208,7 @@ function HeroPanel() {
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               <FileText className="h-3.5 w-3.5" />
-              Question
+              Sample Question
             </div>
             <p className="text-sm leading-relaxed text-foreground">
               Why did our AP cycle time jump 40% in Q3 — and what should we
@@ -231,28 +244,26 @@ function HeroPanel() {
         <div className="flex flex-col gap-4 bg-secondary/30 p-5">
           <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-cadence">
             <Sparkles className="h-3.5 w-3.5" />
-            Prescription
+            Sample Prescription
           </div>
           <div className="rounded-lg border border-border bg-card p-4">
             <p className="text-sm font-medium text-foreground">
-              Auto-approve invoices under $5k
+              Fast-track PO-matched invoices under $5k
             </p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Bypass manual <Glossary term="3-way match">3-way match</Glossary> for low-risk invoices. Route
-              exceptions to a single reviewer queue.
+              Streamline manual <Glossary term="3-way match">3-way match</Glossary> for low-variance PO invoices and route exceptions to a single reviewer queue.
             </p>
             <div className="mt-3 flex items-baseline gap-1.5">
-              <span className="text-2xl font-semibold tracking-tight text-foreground">
-                6.2
+              <span className="text-xs font-medium text-cadence">
+                Priority #1 · High-impact workflow rule
               </span>
-              <span className="text-xs text-muted-foreground">hrs / week recovered</span>
             </div>
           </div>
           <div className="flex flex-col gap-2">
             {[
-              "Draft the exception rule",
-              "Notify approvers in #ops-finance",
-              "Schedule 14-day review",
+              "Define variance tolerance threshold",
+              "Assign single exception owner",
+              "Review exception log every 14 days",
             ].map((t, i) => (
               <div
                 key={i}

@@ -1,0 +1,55 @@
+name: Cadence CI
+
+on:
+  push:
+    branches:
+      - main
+      - branch1
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-build:
+    name: Lint, Typecheck, Test & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: "file:./dev.db"
+      NEXT_PUBLIC_APP_URL: "https://cadence.ai"
+      ALLOW_IN_MEMORY_RATE_LIMIT: "true"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.4"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma Client & apply migrations
+        run: |
+          bun run db:generate
+          bun run db:migrate:deploy
+
+      - name: Run TypeScript typecheck
+        run: bun run typecheck
+
+      - name: Run ESLint
+        run: bun run lint
+
+      - name: Run automated unit, SSRF & contract tests
+        run: npm test
+
+      - name: Build production bundle
+        run: bun run build

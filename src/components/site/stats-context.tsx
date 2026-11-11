@@ -15,40 +15,40 @@ type ContextStat = {
 
 const stats: ContextStat[] = [
   {
-    target: 1.2,
-    suffix: "M+",
-    decimals: 1,
-    label: "documents analyzed",
-    context:
-      "Invoices, contracts, and SOPs parsed across finance, ops, and procurement teams since launch. Each one fed back into Cadence's anomaly detection.",
-    source: "Aggregate usage, last 12 months",
-  },
-  {
-    target: 6.2,
-    suffix: " hrs",
-    decimals: 1,
-    label: "saved per week, per team",
-    context:
-      "Measured as the delta between time-to-close before and after Cadence was wired into the AP cycle. The recovery comes mostly from removing manual 3-way matches under $5k.",
-    source: "Median across 24 piloting teams",
-  },
-  {
-    target: 73,
-    suffix: "%",
+    target: 3,
+    suffix: " classes",
     decimals: 0,
-    label: "faster contract review",
+    label: "first-class operational document schemas",
     context:
-      "Vendor agreements that took 11 days to redline now take under 3. Cadence flags the risky clauses first, so legal reviews the right pages — not all of them.",
-    source: "Self-reported, procurement teams",
+      "Cadence is tuned specifically around Invoices, Vendor Contracts, and Standard Operating Procedures (SOPs), with automatic document-type detection when set to Auto.",
+    source: "Engine specification · src/lib/diagnostics-engine.ts",
   },
   {
-    target: 98,
-    suffix: "%",
+    target: 8,
+    suffix: "k chars",
     decimals: 0,
-    label: "anomaly recall vs. manual audit",
+    label: "bounded document window per analysis",
     context:
-      "Of the anomalies a senior analyst would flag on a manual audit, Cadence surfaces 98% automatically — and catches a class of pricing-drift issues auditors routinely miss.",
-    source: "Blind audit, 1,200 documents",
+      "Each pasted document or SSRF-validated webpage is sanitized, stripped of script/style tags, and bounded to 8,000 characters to guarantee predictable latency and token cost.",
+    source: "Analyzer route policy · src/app/api/analyze/route.ts",
+  },
+  {
+    target: 4,
+    suffix: " outputs",
+    decimals: 0,
+    label: "structured diagnostic sections per run",
+    context:
+      "Every document analysis produces a normalized schema: executive summary, extracted key fields with flags, severity-ranked anomalies, and actionable recommendations.",
+    source: "Normalized output contract · normalizeAnalysisPayload()",
+  },
+  {
+    target: 0,
+    suffix: " silent",
+    decimals: 0,
+    label: "invented metrics or unapproved actions",
+    context:
+      "Cadence never fabricates hours recovered or historical records not supplied in the prompt, and clearly badges whether an output came from Live AI or the deterministic rule engine.",
+    source: "Non-hallucination guardrail · Phase 6 verification",
   },
 ];
 
@@ -59,9 +59,9 @@ export function StatsContext() {
     <section className="relative py-24 sm:py-32">
       <div className="mx-auto max-w-5xl px-6">
         <SectionHeading
-          eyebrow="The numbers, in context"
-          title="Every stat has a method behind it."
-          description="Marketing numbers are cheap. Here's what each one actually measures — and where it comes from."
+          eyebrow="Architecture in context"
+          title="Every number reflects an actual engineering constraint."
+          description="Instead of unverifiable marketing claims, here are the exact operational bounds and guarantees implemented in the Cadence codebase."
         />
 
         <div ref={ref} className="mt-12 grid gap-4 md:grid-cols-2 md:gap-5">

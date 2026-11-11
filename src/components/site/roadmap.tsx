@@ -14,25 +14,28 @@ type Item = {
 
 const roadmap: { heading: string; items: Item[] }[] = [
   {
-    heading: "Shipped",
+    heading: "Shipped in Preview",
     items: [
       {
         status: "shipped",
-        title: "Document intelligence v2",
-        detail: "Paste a URL or contract — get extracted fields, anomalies, and prescriptions.",
-        quarter: "Now",
+        title: "Document intelligence (Text & URL)",
+        detail:
+          "Paste an invoice, contract, or SOP, or fetch a public URL via SSRF-guarded ingestion to extract fields, anomalies, and next moves.",
+        quarter: "Live",
       },
       {
         status: "shipped",
-        title: "Reasoning traces",
-        detail: "Every chat answer shows the chain — records parsed, rules applied, bottleneck located.",
-        quarter: "Now",
+        title: "Structured diagnostic reasoning",
+        detail:
+          "Interactive analyst chat with explicit separation of supplied evidence, detected conditions, and deterministic fallback support.",
+        quarter: "Live",
       },
       {
         status: "shipped",
-        title: "SOC 2 Type II",
-        detail: "Annual audit complete. Controls continuously monitored.",
-        quarter: "Now",
+        title: "Application security hardening",
+        detail:
+          "DNS-verified SSRF protection, prompt-injection delimiters, rate limiting, CSP/HSTS headers, and PII-redacted structured logging.",
+        quarter: "Live",
       },
     ],
   },
@@ -41,21 +44,24 @@ const roadmap: { heading: string; items: Item[] }[] = [
     items: [
       {
         status: "next",
-        title: "File upload (PDF, DOCX, XLSX)",
-        detail: "Drag-and-drop documents directly into the demo — no paste required.",
-        quarter: "Q4",
+        title: "Direct file upload (PDF, DOCX, XLSX)",
+        detail:
+          "Upload multi-page vendor PDFs and spreadsheets directly into the analyzer without copy-pasting text.",
+        quarter: "Planned",
       },
       {
         status: "next",
-        title: "Scheduled diagnostics",
-        detail: "Cadence runs a diagnostic on your data every Monday and emails you the top 3 moves.",
-        quarter: "Q4",
+        title: "Configurable diagnostic thresholds",
+        detail:
+          "Define custom organization rules — such as custom PO variance tolerances and mandatory approval tiers.",
+        quarter: "Planned",
       },
       {
         status: "next",
-        title: "Custom diagnostic rules",
-        detail: "Teach Cadence your team's specific thresholds — e.g. flag any invoice > $50k.",
-        quarter: "Q4",
+        title: "ERP & Slack connectors",
+        detail:
+          "Native OAuth integrations for QuickBooks, NetSuite, DocuSign, and Slack notification routing.",
+        quarter: "Planned",
       },
     ],
   },
@@ -64,21 +70,24 @@ const roadmap: { heading: string; items: Item[] }[] = [
     items: [
       {
         status: "later",
-        title: "Multi-org workspaces",
-        detail: "For holding companies and finance shared-service centers managing multiple entities.",
-        quarter: "Q1",
+        title: "SSO, SCIM & RBAC",
+        detail:
+          "Enterprise SAML/OIDC authentication, role-based access control, and multi-entity workspace isolation.",
+        quarter: "Roadmap",
       },
       {
         status: "later",
-        title: "Private deployment",
-        detail: "Run Cadence in your own VPC. Bring your own model. Full data residency control.",
-        quarter: "Q1",
+        title: "SOC 2 Type II & audit export",
+        detail:
+          "Formal third-party compliance attestation and immutable, exportable diagnostic audit logs.",
+        quarter: "Roadmap",
       },
       {
         status: "later",
-        title: "Cadence API",
-        detail: "Programmatic access to diagnostics — embed the analyst in your internal tools.",
-        quarter: "Q2",
+        title: "Private VPC deployment & API",
+        detail:
+          "Run Cadence in your own cloud environment with bring-your-own-model (BYOM) and programmatic REST endpoints.",
+        quarter: "Roadmap",
       },
     ],
   },
@@ -96,8 +105,8 @@ export function Roadmap() {
       <div className="mx-auto max-w-6xl px-6">
         <SectionHeading
           eyebrow="Roadmap"
-          title="What's shipped. What's next."
-          description="We ship continuously. Here's what's live, what's in flight, and what's on the horizon."
+          title="What's live in preview. What's planned next."
+          description="A transparent view of what is implemented in this repository today versus planned capabilities for upcoming releases."
         />
 
         <div className="mt-12 grid gap-4 md:grid-cols-3 md:gap-5">
@@ -114,7 +123,7 @@ export function Roadmap() {
                 <span
                   className={cn(
                     "h-1.5 w-1.5 rounded-full",
-                    col.heading === "Shipped" && "bg-cadence",
+                    col.heading.startsWith("Shipped") && "bg-cadence",
                     col.heading === "Next" && "bg-foreground",
                     col.heading === "Later" && "bg-muted-foreground/30",
                   )}

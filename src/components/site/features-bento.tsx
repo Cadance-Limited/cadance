@@ -24,46 +24,46 @@ type Feature = {
 const features: Feature[] = [
   {
     icon: Sparkles,
-    title: "Diagnostic chat that reasons",
+    title: "Diagnostic chat that shows its reasoning",
     description:
-      "Ask a question in plain English. Cadence shows its work — the records it parsed, the rules it applied, and the bottleneck it located — before it ever hands you an answer.",
+      "Ask an operations question in plain English. Cadence structures every response into supplied evidence, detected conditions, ranked prescriptions, and the next open question.",
     span: "wide",
     visual: <ReasoningVisual />,
   },
   {
     icon: FileText,
-    title: "Reads your documents",
+    title: "Reads invoices, contracts, and SOPs",
     description:
-      "Invoices, contracts, SOPs, vendor PDFs. Drop a URL or paste the text — Cadence extracts the fields that matter and flags the ones that don't add up.",
+      "Paste document text or provide a public URL — Cadence extracts key fields, checks invoice arithmetic, and flags terms that warrant review.",
     visual: <DocsVisual />,
   },
   {
     icon: ListChecks,
     title: "Structured prescriptions",
     description:
-      "Not vibes — a ranked list of next moves, with the estimated hours recovered and the owner who should pick it up.",
+      "Returns a ranked list of next moves with a clear one-sentence rationale based strictly on the evidence you supply.",
     visual: <PrescriptionVisual />,
   },
   {
     icon: Activity,
-    title: "Anomaly detection",
+    title: "Rule & AI anomaly flagging",
     description:
-      "Outlier pricing, duplicate line items, terms that drift from your templates. Surfaced before they cost you a quarter.",
+      "Surfaces arithmetic discrepancies, undeclared surcharges, missing PO references, and Net-terms modifications for human review.",
     visual: <AnomalyVisual />,
   },
   {
     icon: GitBranch,
-    title: "Workflow that ships",
+    title: "Actionable workflow playbooks",
     description:
-      "Every prescription turns into a draft rule, an approval queue, and a 14-day review — wired to the tools your team already lives in.",
+      "Translates diagnostic findings into clear operational steps — defining tolerance thresholds, exception ownership, and review cadences.",
     span: "default",
     visual: <WorkflowVisual />,
   },
   {
     icon: Plug,
-    title: "Integrations, not exports",
+    title: "Roadmap ERP & Slack connectors",
     description:
-      "Connect QuickBooks, NetSuite, DocuSign, and Slack. Cadence reads and writes back — no CSV ferries required.",
+      "Pasted text and SSRF-safe URL ingestion are live today. Direct connectors for QuickBooks, NetSuite, DocuSign, and Slack are on the product roadmap.",
     span: "default",
     visual: <IntegrationsVisual />,
   },
@@ -76,7 +76,7 @@ export function FeaturesBento() {
         <SectionHeading
           eyebrow="Capabilities"
           title="An analyst that diagnoses, not just describes."
-          description="Most tools hand you a chart and walk away. Cadence reads your operations, reasons through the friction, and prescribes the fix."
+          description="Most tools hand you a chart and walk away. Cadence reads your operational documents, reasons through the friction, and outlines the next move."
         />
 
         <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
@@ -117,25 +117,23 @@ function BentoCard({ feature, index }: { feature: Feature; index: number }) {
       <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
         {description}
       </p>
-      {visual ? (
-        <div className="mt-5 flex-1">{visual}</div>
-      ) : null}
+      {visual ? <div className="mt-5 flex-1">{visual}</div> : null}
     </motion.div>
   );
 }
 
-/* ---------- Inline card visuals ---------- */
+/* ---------- Inline card visuals (labeled as sample illustrations) ---------- */
 
 function ReasoningVisual() {
   const steps = [
-    "Parsed 1,284 AP records · 11 outliers",
-    "Cross-referenced vendor SLA vs. payment dates",
-    "Bottleneck: manual 3-way match < $5k",
+    "Supplied evidence: sample Q3 invoice & PO parameters",
+    "Detected condition: Net-30 to Net-45 drift & missing PO",
+    "Prescription: require PO reference prior to approval routing",
   ];
   return (
     <div className="rounded-xl border border-border bg-secondary/30 p-4">
       <div className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        Reasoning trace
+        Sample reasoning trace
       </div>
       <ol className="flex flex-col gap-2.5">
         {steps.map((s, i) => (
@@ -158,14 +156,14 @@ function DocsVisual() {
   return (
     <div className="rounded-xl border border-border bg-secondary/30 p-4">
       <div className="mb-3 flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        <span>invoice_4291.pdf</span>
+        <span>sample_invoice_4291</span>
         <span className="text-cadence">parsed</span>
       </div>
       <div className="flex flex-col gap-1.5">
         {[
-          ["Vendor", "Acme Logistics"],
+          ["Vendor", "Acme Logistics Co."],
           ["Net terms", "Net 30 → flagged as Net 45"],
-          ["Total", "$48,210.00"],
+          ["Total due", "$52,307.85"],
         ].map(([k, v]) => (
           <div
             key={k}
@@ -184,16 +182,15 @@ function PrescriptionVisual() {
   return (
     <div className="rounded-xl border border-border bg-secondary/30 p-4">
       <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        Move #1
+        Recommended Move #1
       </div>
       <div className="text-sm font-medium text-foreground">
-        Auto-approve invoices &lt; $5k
+        Hold undeclared surcharge pending proof
       </div>
       <div className="mt-1 flex items-baseline gap-1.5">
-        <span className="text-xl font-semibold tracking-tight text-foreground">
-          6.2
+        <span className="text-xs font-medium text-cadence">
+          Human-in-the-loop verification
         </span>
-        <span className="text-xs text-muted-foreground">hrs / week</span>
       </div>
     </div>
   );
@@ -203,7 +200,7 @@ function AnomalyVisual() {
   return (
     <div className="rounded-xl border border-border bg-secondary/30 p-4">
       <div className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        flagged this week
+        illustrative anomaly distribution
       </div>
       <div className="flex items-end gap-1.5">
         {[40, 65, 30, 80, 55, 95, 45, 60, 35, 72, 50, 88].map((h, i) => (
@@ -218,7 +215,7 @@ function AnomalyVisual() {
         ))}
       </div>
       <div className="mt-2 text-[11px] text-muted-foreground">
-        2 outliers above 2σ · auto-flagged
+        Flags missing POs, fee drift &amp; math mismatches
       </div>
     </div>
   );
@@ -228,17 +225,15 @@ function WorkflowVisual() {
   return (
     <div className="rounded-xl border border-border bg-secondary/30 p-4">
       <div className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        prescription → workflow
+        diagnostic → human review
       </div>
       <div className="flex items-center gap-2 text-xs">
-        {["Draft rule", "Approve", "Review"].map((t, i) => (
+        {["Extract", "Verify", "Decide"].map((t, i) => (
           <div key={t} className="flex items-center gap-2">
             <span className="rounded-md border border-border bg-card px-2 py-1 text-foreground">
               {t}
             </span>
-            {i < 2 ? (
-              <span className="text-muted-foreground">→</span>
-            ) : null}
+            {i < 2 ? <span className="text-muted-foreground">→</span> : null}
           </div>
         ))}
       </div>
@@ -251,7 +246,7 @@ function IntegrationsVisual() {
   return (
     <div className="rounded-xl border border-border bg-secondary/30 p-4">
       <div className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        connected
+        planned roadmap connectors
       </div>
       <div className="flex flex-wrap gap-2">
         {apps.map((a) => (

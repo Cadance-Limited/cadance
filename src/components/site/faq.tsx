@@ -12,36 +12,36 @@ import { Glossary } from "./glossary";
 
 const faqs: { q: string; a: React.ReactNode }[] = [
   {
-    q: "What can Cadence actually read?",
+    q: "What can Cadence read right now?",
     a: (
       <>
-        Invoices, vendor agreements, contracts, <Glossary term="SOP">SOPs</Glossary>, and most business PDFs — pasted as text, uploaded as a URL, or pulled through an integration. The live demo accepts a URL or pasted text right now. File upload arrives with the Team plan.
+        In this preview, you can paste text from invoices, vendor agreements, contracts, or <Glossary term="SOP">SOPs</Glossary>, or provide a public HTTP/HTTPS webpage URL. Direct binary file uploads (PDF, DOCX, XLSX) and native ERP connectors are planned for the upcoming Team release.
       </>
     ),
   },
   {
-    q: "Does Cadence invent the numbers it cites?",
-    a: "No. It reasons only from the documents and data you give it. If a fact isn't in the source, it says so and asks for it. That's the whole point — an analyst that doesn't bluff.",
+    q: "Does Cadence invent numbers or savings estimates?",
+    a: "No. Cadence is engineered to separate supplied facts from assumptions. If a number isn't in the text you provide, it won't fabricate hours recovered, historical baselines, or benchmark percentages — and it clearly badges whether an answer came from the live AI model or the deterministic rule engine.",
   },
   {
-    q: "Is my data used to train the model?",
-    a: "No. Documents you analyze in the demo are processed for the response and discarded; they're not used to train anything. Team and Scale plans add data residency controls and a no-retention mode.",
+    q: "How are submitted documents handled in the preview?",
+    a: "Documents analyzed in the live demo are processed transiently in memory to generate the response and are not stored in the application database. Server logs automatically redact document text and email addresses. However, because this is a public preview, do not submit confidential production secrets or regulated PII.",
   },
   {
-    q: "Do I need to be technical?",
-    a: "No. That's who Cadence is built for — operations and finance teams who don't want to write a rule, write a query, or read a chart. You ask a question in plain English and get a ranked set of next moves.",
+    q: "What happens if the external AI provider is offline or unconfigured?",
+    a: "Cadence automatically falls back to its built-in deterministic diagnostic and document extraction engine, and displays a visible mode badge so you always know which engine produced the output.",
   },
   {
-    q: "How is this different from another dashboard?",
+    q: "How is this different from a traditional BI dashboard?",
     a: (
       <>
-        Dashboards describe what happened. Cadence diagnoses why it happened, where the friction lives, and what to do about it — then turns each prescription into a draft rule you can ship in one click. It catches <Glossary term="anomaly">anomalies</Glossary> before you have to look for them.
+        Dashboards aggregate structured database rows into charts. Cadence inspects unstructured operational text — such as invoices and contracts — to check arithmetic, flag <Glossary term="anomaly">anomalies</Glossary> like Net-terms drift or missing POs, and outline the next verification steps.
       </>
     ),
   },
   {
-    q: "When does the Team plan open up?",
-    a: "We're rolling out access through the waitlist. Join with your work email and we'll reach out within 48 hours. The live demo works for everyone right now — no login required.",
+    q: "How do the waitlist and planned pricing tiers work?",
+    a: "The interactive demo is free to use in your browser with no login. Joining the waitlist records your email in our database so we can notify you when persistent Team workspaces and enterprise Scale deployments open.",
   },
 ];
 

@@ -8,7 +8,13 @@ import { consumePendingPrompt, onPrompt } from "@/lib/prompt-bus";
 import { cn } from "@/lib/utils";
 
 type Role = "user" | "assistant";
-type Message = { role: Role; content: string; pending?: boolean };
+type EngineMode = "live_ai" | "deterministic_fallback";
+type Message = {
+  role: Role;
+  content: string;
+  pending?: boolean;
+  mode?: EngineMode;
+};
 
 const EXAMPLES = [
   "Why did our AP cycle time jump 40% in Q3 — what should we fix first?",
@@ -20,7 +26,7 @@ const EXAMPLES = [
 const WELCOME: Message = {
   role: "assistant",
   content:
-    "I'm Cadence — your operations analyst. Ask me about a bottleneck, an anomaly, or a workflow that feels off. I'll reason through it and hand you the next moves.\n\n*Try one of the prompts below, or write your own.*",
+    "I'm Cadence — your operations analyst. Ask me about a bottleneck, an anomaly, or a workflow that feels off. I'll structure the supplied evidence, assumptions, and next moves.\n\n*Try one of the prompts below, or write your own.*",
 };
 
 export function DemoChat() {
@@ -45,7 +51,6 @@ export function DemoChat() {
     const next: Message[] = [...messages, { role: "user", content }];
     setMessages(next);
     setLoading(true);
-    // optimistic pending assistant placeholder
     setMessages((m) => [...m, { role: "assistant", content: "", pending: true }]);
 
     try {
@@ -60,7 +65,14 @@ export function DemoChat() {
       if (!data.ok) throw new Error(data.error || "Request failed");
       setMessages((m) => {
         const copy = [...m];
-        copy[copy.length - 1] = { role: "assistant", content: data.content };
+        copy[copy.length - 1] = {
+          role: "assistant",
+          content: data.content,
+          mode:
+            data.mode === "live_ai" || data.mode === "deterministic_fallback"
+              ? data.mode
+              : undefined,
+        };
         return copy;
       });
     } catch (e) {
@@ -70,7 +82,7 @@ export function DemoChat() {
         const copy = [...m];
         copy[copy.length - 1] = {
           role: "assistant",
-          content: `I hit a wall: **${msg}**. Try again in a moment.`,
+          content: `Request could not be completed: **${msg}**.`,
         };
         return copy;
       });
@@ -80,11 +92,9 @@ export function DemoChat() {
     }
   }
 
-  // Keep a ref to the latest `send` so the prompt-bus listener never goes stale.
   const sendRef = React.useRef(send);
   sendRef.current = send;
 
-  // Listen for prompts dispatched from the command palette (including queued prompts on mount).
   React.useEffect(() => {
     const queued = consumePendingPrompt();
     if (queued) {
@@ -128,13 +138,19 @@ export function DemoChat() {
       {/* messages */}
       <div
         ref={scrollRef}
+        role="log"
+        aria-live="polite"
+        aria-label="Diagnostic conversation history"
         className="scrollbar-cadence flex-1 space-y-5 overflow-y-auto px-4 py-5"
       >
         {messages.map((m, i) => (
           <ChatBubble key={i} message={m} />
         ))}
         {error ? (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+          >
             {error}
           </div>
         ) : null}
@@ -167,6 +183,7 @@ export function DemoChat() {
         <div className="flex items-end gap-2 rounded-xl border border-border bg-background/40 p-2 focus-within:border-foreground/30 focus-within:bg-background">
           <textarea
             ref={inputRef}
+            aria-label="Ask Cadence an operations question"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -184,14 +201,14 @@ export function DemoChat() {
             onClick={() => send(input)}
             disabled={loading || !input.trim()}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-background transition-all hover:translate-y-[-1px] disabled:translate-y-0 disabled:opacity-40"
-            aria-label="Send"
+            aria-label="Send message"
           >
             <ArrowUp className="h-4 w-4" />
           </button>
         </div>
         <div className="mt-1.5 px-1 text-[11px] text-muted-foreground/50">
-          Cadence reasons from what you tell it. It won&apos;t invent numbers it
-          doesn&apos;t have.
+          Cadence reasons strictly from what you supply and badges Live AI vs.
+          Deterministic Rule Engine mode.
         </div>
       </div>
     </div>
@@ -230,7 +247,18 @@ function ChatBubble({ message }: { message: Message }) {
         ) : isUser ? (
           <p className="whitespace-pre-wrap">{message.content}</p>
         ) : (
-          <Markdown text={message.content} />
+          <div>
+            {message.mode ? (
+              <div className="mb-2 flex items-center gap-1.5">
+                <span className="rounded-md border border-border bg-background/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {message.mode === "live_ai"
+                    ? "Live AI model"
+                    : "Deterministic rule engine"}
+                </span>
+              </div>
+            ) : null}
+            <Markdown text={message.content} />
+          </div>
         )}
       </div>
     </motion.div>
@@ -239,7 +267,7 @@ function ChatBubble({ message }: { message: Message }) {
 
 function TypingDots() {
   return (
-    <div className="flex items-center gap-1 py-1">
+    <div className="flex items-center gap-1 py-1" aria-label="Analyzing">
       {[0, 1, 2].map((i) => (
         <span
           key={i}

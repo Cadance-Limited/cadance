@@ -18,36 +18,46 @@ type Badge = {
   detail: string;
 };
 
+/**
+ * Factual description of implemented application-layer security controls
+ * and clearly labeled enterprise roadmap items. Never claims unverified certifications.
+ */
 const badges: Badge[] = [
   {
     icon: ShieldCheck,
-    label: "SOC 2 Type II",
-    detail: "Annual audit, controls continuously monitored.",
-  },
-  {
-    icon: KeyRound,
-    label: "SSO & SCIM",
-    detail: "SAML / OIDC provisioning for your IdP.",
+    label: "SSRF-Guarded URL Fetcher",
+    detail:
+      "Validates HTTP/S schemes, resolves DNS records, blocks private/loopback/metadata IPs, and validates redirects hop-by-hop.",
   },
   {
     icon: Lock,
-    label: "Data encryption",
-    detail: "AES-256 at rest, TLS 1.3 in transit.",
+    label: "CSP & HSTS Headers",
+    detail:
+      "Enforces Content-Security-Policy, Strict-Transport-Security, X-Frame-Options: DENY, and nosniff headers.",
   },
   {
     icon: Fingerprint,
-    label: "No model training",
-    detail: "Your documents are never used to train anything.",
+    label: "Prompt-Injection Isolation",
+    detail:
+      "Wraps untrusted document text in isolated XML boundaries and strips control sequences before analysis.",
   },
   {
     icon: FileCheck2,
-    label: "Audit log",
-    detail: "Every diagnostic, exportable, retention-controlled.",
+    label: "Strict Output Validation",
+    detail:
+      "Normalizes and bounds all model responses and enforces payload size caps (64 KB) on every API route.",
   },
   {
     icon: ScrollText,
-    label: "DPA & GDPR",
-    detail: "Data processing addendum available on request.",
+    label: "Redacted Structured Logs",
+    detail:
+      "Server logs track request correlation IDs and latency while redacting raw document text, emails, and credentials.",
+  },
+  {
+    icon: KeyRound,
+    label: "Roadmap: SSO, SCIM & SOC 2",
+    detail:
+      "SAML/OIDC authentication, tenant-isolated storage, and formal third-party SOC 2 audits are planned for enterprise release.",
   },
 ];
 
@@ -64,11 +74,11 @@ export function Security() {
           eyebrow={
             <span className="flex items-center gap-2">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Security & compliance
+              Security architecture &amp; roadmap
             </span>
           }
-          title="Your operations data stays yours."
-          description="Cadence is built for finance and ops teams who can't hand their contracts to just anyone. Security is the foundation, not a roadmap item."
+          title="Verifiable application controls today. Enterprise compliance on the roadmap."
+          description="This technical preview implements strict input validation, SSRF-protected URL fetching, rate limiting, and PII-redacted logging. Do not submit sensitive regulated production secrets to the public demo."
         />
 
         <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 md:gap-5">
@@ -114,10 +124,13 @@ export function Security() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mt-8 text-center text-sm text-muted-foreground"
         >
-          Need our security docs, a DPA, or a custom data-residency arrangement?{" "}
-          <span className="font-medium text-foreground">
-            Reach out — we reply within one business day.
-          </span>
+          Evaluating Cadence for a private or self-hosted deployment?{" "}
+          <a
+            href="#cta"
+            className="font-medium text-foreground underline-offset-2 hover:underline"
+          >
+            Join the waitlist to discuss security requirements.
+          </a>
         </motion.p>
       </div>
     </section>

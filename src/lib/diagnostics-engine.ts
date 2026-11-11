@@ -1,7 +1,11 @@
 /**
- * Deterministic diagnostic and document extraction engine.
- * Ensures the Cadence live demo operates with 100% reliability even when
- * external LLM credentials are not configured or upstream services time out.
+ * Deterministic diagnostic and document extraction engine + strict schema validator.
+ *
+ * NON-HALLUCINATION POLICY:
+ * - Never invents hours recovered, anomaly rates, financial savings, or industry benchmarks.
+ * - Never claims to have parsed records that were not supplied in the user input.
+ * - Explicitly identifies assumptions and distinguishes supplied evidence from inferred conditions.
+ * - Clearly signals when running in deterministic rule-based fallback mode vs. live AI mode.
  */
 
 export type ChatTurn = {
@@ -41,89 +45,92 @@ export function generateDeterministicChatResponse(messages: ChatTurn[]): string 
   const prompt = (lastUser?.content ?? "").trim();
   const lower = prompt.toLowerCase();
 
-  // Case 1: AP cycle time jump
+  const citedNumbers = prompt.match(/\$?\d[\d,.]*%?(?:\s*(?:days?|hrs?|hours?|weeks?|months?|k|m))?/gi) ?? [];
+  const evidenceClause =
+    citedNumbers.length > 0
+      ? `Supplied figures in your prompt: ${citedNumbers.slice(0, 4).map((s) => `\`${s.trim()}\``).join(", ")}.`
+      : "No quantitative dataset or document records were attached to this prompt.";
+
   if (lower.includes("ap cycle") || (lower.includes("40%") && lower.includes("q3"))) {
     return `## Reasoning
-- Isolating the **40% Q3 AP cycle-time jump** across the three stages of invoice processing: intake, **3-way match** (verifying invoice against PO and receiving log), and sign-off.
-- In mid-market AP queues, cycle-time spikes of this magnitude rarely come from intake; they cluster around manual matching of low-dollar invoices and sequential multi-person approvals.
-- Invoices without a clean purchase order reference or with minor line-item variances sit in reviewer queues waiting on email back-and-forth before payment release.
+- **Supplied evidence**: ${evidenceClause}
+- **Detected condition**: A reported Q3 accounts-payable cycle-time increase requires isolating intake latency, **3-way match** verification (matching invoice, purchase order, and receiving log), and approval queue wait time.
+- **Assumption & limitation**: Because underlying AP ledger rows were not uploaded, Cadence cannot verify which vendor tier or approval stage caused the delay without your queue breakdown.
 
 ## Prescription
-1. **Auto-approve invoices under $5,000 with <2% variance** — Bypass manual 3-way matching on low-risk recurring spend and route only true exceptions to a single reviewer (~6.2 hrs/week recovered).
-2. **Enforce PO numbers at vendor intake** — Reject non-PO invoices automatically at submission so AP analysts stop chasing department heads for retroactive sign-off (~3.5 hrs/week recovered).
-3. **Collapse sequential approvals into tiered thresholds** — Require a single budget-owner sign-off under $10k instead of parallel finance + ops review (~2.0 hrs/week recovered).
+1. **Segment Q3 invoices by dollar band and PO status** — Compare approval timestamps on PO-backed vs. non-PO invoices to see where cycle time expanded.
+2. **Audit exception-queue holds** — Identify whether invoices stalled waiting on missing receiving confirmation or manual line-item variance checks.
+3. **Define an explicit auto-match tolerance rule** — Route recurring PO-backed invoices within your approved variance threshold directly to payment batching.
 
 ## Open question
-What percentage of your Q3 invoices were under $5,000, and how many required more than one approver?`;
+What share of your Q3 invoices lacked an upfront PO number or required multiple sequential sign-offs?`;
   }
 
-  // Case 2: Vendor ACME 2x invoice spike
   if (lower.includes("acme") || lower.includes("2×") || lower.includes("2x higher")) {
     return `## Reasoning
-- Comparing **Vendor ACME's 2× quarter-over-quarter invoice total** against three primary drivers: contracted rate increases, volume expansion, or uncontracted fee drift.
-- When a single vendor doubles in one quarter without a new Master Services Agreement (MSA), the spike typically stems from **undeclared surcharges** (fuel, peak-season, or rush fees), duplicate billing across overlapping periods, or unapproved scope creep.
-- Payment terms often shift quietly alongside pricing spikes (e.g., Net 30 extended or shortened without procurement sign-off).
+- **Supplied evidence**: ${evidenceClause}
+- **Detected condition**: A reported quarter-over-quarter doubling in a vendor's billed total stems from one of three verifiable sources: unit-rate changes, billed quantity growth, or newly added surcharge/fee lines.
+- **Assumption & limitation**: No historical ACME invoices or Master Services Agreement (MSA) rate cards were provided in this session, so line-level variance must be confirmed against the source PDFs.
 
 ## Prescription
-1. **Run a line-item variance audit against the baseline MSA rate card** — Isolate unit price changes from volume changes and flag any line item not explicitly listed in the signed contract (~4.5 hrs/week recovered).
-2. **Place a temporary payment hold on non-PO surcharge lines** — Require ACME to provide signed change orders for any peak, fuel, or expedite surcharges before releasing the disputed delta.
-3. **Wire an automated vendor spend-cap alert** — Trigger an immediate review whenever a recurring vendor's monthly bill exceeds its trailing 90-day average by more than 15% (~2.4 hrs/week recovered).
+1. **Compare current line items against the signed rate schedule** — Separate contracted unit-price changes from uncontracted surcharges (such as fuel, peak, or rush fees).
+2. **Check for duplicate billing periods or missing PO references** — Verify that invoice date ranges do not overlap with prior paid statements.
+3. **Hold disputed surcharge lines pending vendor documentation** — Release only the verified base amount until written rate authorization is attached.
 
 ## Open question
-Did ACME add new surcharge line items this quarter, or did the unit quantity on existing SKU lines double?`;
+Can you paste the current ACME invoice into the Document Intelligence tab so we can inspect the exact line items and payment terms?`;
   }
 
-  // Case 3: 11-day contract review friction
   if (lower.includes("11 days") || lower.includes("contract review")) {
     return `## Reasoning
-- Decomposing an **11-day contract review cycle** across intake, first-pass legal/procurement triage, redline turnarounds, and final sign-off.
-- The majority of review latency is dead queue time: standard low-risk NDAs and vendor renewals wait in the same linear backlog as complex custom MSAs.
-- Reviewers spend disproportionate hours reading boilerplate sections from scratch rather than jumping directly to non-standard clauses (liability caps, auto-renewal windows, indemnity, and Net payment terms).
+- **Supplied evidence**: ${evidenceClause}
+- **Detected condition**: An extended contract review cycle typically reflects either queue backlog before first-pass review or repeated redline turns on non-standard clauses (liability caps, indemnity, payment terms, and auto-renewal notice windows).
+- **Assumption & limitation**: Without timestamp logs by review stage, we cannot attribute how much of the cycle is passive queue wait vs. active legal negotiation.
 
 ## Prescription
-1. **Pre-screen contracts against a clause playbook on intake** — Automatically flag deviations in limitation of liability, auto-renewal notice windows, and payment terms before legal opens the file (~5.8 hrs/week recovered).
-2. **Fast-track standard agreements under $25,000** — Route agreements that match your standard template tolerances directly to signature without manual legal review (~4.0 hrs/week recovered).
-3. **Send a pre-approved fallback clause table with the first redline** — Eliminate the second and third rounds of negotiation on routine indemnity and governing-law clauses.
+1. **Separate standard low-risk agreements from custom MSAs at intake** — Route unmodified templates through a fast-track sign-off lane instead of a single FIFO legal backlog.
+2. **Pre-screen incoming drafts against a clause checklist** — Flag deviations in Net payment terms, limitation of liability, and termination windows before legal opens the document.
+3. **Attach pre-approved fallback language on the first redline turn** — Reduce multi-round email back-and-forth on routine commercial terms.
 
 ## Open question
-How many of those 11 days are spent waiting for the first reviewer to open the document versus back-and-forth redlines with the vendor?`;
+How much of your review timeline is spent waiting for initial triage versus negotiating redlines with the counterparty?`;
   }
 
-  // Case 4: Three reviewers touching invoices under $10k
   if (lower.includes("three reviewers") || lower.includes("3 reviewers") || lower.includes("$10k")) {
     return `## Reasoning
-- Evaluating a workflow where **3 reviewers touch every invoice under $10k** against control value versus operational drag.
-- When three people review every small invoice, diffusion of responsibility sets in: each reviewer assumes the others checked the line items, while cycle time triples from context-switching and handoff delays.
-- Industry audit data shows that sub-$10k recurring vendor invoices carry minimal fraud risk when matched against an active PO or historical run-rate.
+- **Supplied evidence**: ${evidenceClause}
+- **Detected condition**: Requiring three sequential or parallel reviewers on every invoice under $10k introduces handoff latency and duplicated verification on routine transactions.
+- **Assumption & limitation**: We do not have your historical exception rate on sub-$10k invoices, so any threshold change should be validated against your internal audit policy.
 
 ## Prescription
-1. **Replace 3-reviewer sign-off under $10k with automated 2-way/3-way tolerance rules** — Auto-approve PO-backed invoices within 3% of the contracted amount and assign a single exception owner (~6.8 hrs/week recovered).
-2. **Reserve multi-reviewer approval strictly for invoices over $25k or new vendors** — Concentrate senior finance attention on the top 15% of invoices that represent 80%+ of dollar exposure.
-3. **Implement a 5% random post-payment audit sample** — Maintain compliance rigor for SOC 2 and internal audit without blocking daily AP throughput (~1.5 hrs/week recovered).
+1. **Map what each of the three reviewers actually verifies** — Determine whether they check distinct controls (receipt, budget code, treasury release) or duplicate the same review.
+2. **Replace redundant sign-offs on PO-matched invoices with a single owner** — When an invoice matches an approved PO and receiving log within tolerance, require only one exception approver.
+3. **Retain multi-reviewer sign-off for high-value or non-PO spend** — Focus senior review capacity on unbudgeted or high-dollar commitments.
 
 ## Open question
-Are those three reviewers checking different things (e.g., receipt, budget code, payment release), or are all three signing off on the whole invoice?`;
+Are all three reviewers verifying the same fields, or does each reviewer own a separate compliance check?`;
   }
 
-  // Generic tailored diagnostic based on user's actual message
-  const numbersCited = prompt.match(/\$?\d[\d,.]*%?[a-zA-Z]*/g) ?? [];
-  const metricMention =
-    numbersCited.length > 0
-      ? `the cited metrics (${numbersCited.slice(0, 3).join(", ")})`
-      : "the reported workflow friction";
-
   return `## Reasoning
-- Evaluated ${metricMention} across intake, validation rules, handoff queues, and exception handling.
-- In operations workflows without automated triage, bottlenecks compound at manual handoffs where team members re-verify fields that already exist in upstream documents.
-- Without explicit threshold rules separating routine transactions from true anomalies, senior operators spend most of their week clearing low-risk items instead of fixing root-cause exceptions.
+- **Supplied evidence**: ${evidenceClause}
+- **Detected condition**: Operational friction in document-heavy workflows usually concentrates at manual data re-entry, unstandardized intake fields, or multi-step approval queues lacking clear dollar thresholds.
+- **Assumption & limitation**: Because only a short text prompt was provided, this diagnosis outlines structural verification steps rather than citing measured savings.
 
 ## Prescription
-1. **Separate routine volume from exceptions at intake** — Define a strict dollar or risk threshold so standard items clear automatically while only flagged outliers enter the manual review queue (~5.0 hrs/week recovered).
-2. **Standardize field extraction before human review** — Parse key fields (counterparty, dates, totals, and terms) automatically and surface variance warnings inline (~3.2 hrs/week recovered).
-3. **Assign a single owner per exception tier with a 48-hour SLA** — Eliminate multi-reviewer handoff loops and review exception root causes every 14 days.
+1. **Measure queue wait time vs. active touch time** — Log timestamps at intake, first review, exception hold, and final approval to locate the primary bottleneck.
+2. **Standardize required intake fields** — Enforce counterparty ID, reference/PO number, and effective dates before routing items to reviewers.
+3. **Separate routine transactions from exceptions** — Define explicit rules for items that can follow a fast-track path versus outliers requiring senior review.
 
 ## Open question
-Can you share the monthly volume for this workflow and the single step where items sit the longest?`;
+Which specific document type (invoices, contracts, or SOPs) and stage of the workflow is causing the most rework right now?`;
+}
+
+function parseCurrencyValue(raw: string | null): number | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/[^0-9.-]/g, "");
+  if (!cleaned) return null;
+  const num = Number(cleaned);
+  return Number.isFinite(num) ? num : null;
 }
 
 export function analyzeDocumentDeterministic(
@@ -131,8 +138,8 @@ export function analyzeDocumentDeterministic(
   docTypeHint: "invoice" | "contract" | "sop" | "auto",
 ): StructuredAnalysis {
   const lower = docText.toLowerCase();
+  const wordCount = docText.split(/\s+/).filter(Boolean).length;
 
-  // Detect document type if auto
   let detectedType: "invoice" | "contract" | "sop" | "other" =
     docTypeHint === "auto" ? "other" : docTypeHint;
 
@@ -149,7 +156,7 @@ export function analyzeDocumentDeterministic(
       lower.includes("indemnif") ||
       lower.includes("termination") ||
       lower.includes("governing law") ||
-      lower.includes("party")
+      lower.includes("liability")
     ) {
       detectedType = "contract";
     } else if (
@@ -162,7 +169,6 @@ export function analyzeDocumentDeterministic(
     }
   }
 
-  // Check if this matches the sample Acme Logistics invoice or a general invoice
   if (detectedType === "invoice") {
     const invNo =
       docText.match(/Invoice\s*(?:No|Number|#)\s*[:\-]?\s*([A-Za-z0-9\-]+)/i)?.[1] ??
@@ -177,21 +183,34 @@ export function analyzeDocumentDeterministic(
       docText.match(/Due\s*Date\s*[:\-]\s*([^\n\r]+)/i)?.[1]?.trim() ?? null;
     const terms =
       docText.match(/Terms\s*[:\-]\s*([^\n\r]+)/i)?.[1]?.trim() ?? null;
-    const subtotal =
+    const subtotalStr =
       docText.match(/Subtotal\s*[:\-]\s*(\$?[\d,]+\.?\d*)/i)?.[1]?.trim() ?? null;
-    const tax =
+    const taxStr =
       docText.match(/Tax[^:\n]*[:\-]\s*(\$?[\d,]+\.?\d*)/i)?.[1]?.trim() ?? null;
-    const total =
+    const totalStr =
       docText.match(/Total(?:\s*due)?\s*[:\-]\s*(\$?[\d,]+\.?\d*)/i)?.[1]?.trim() ??
       null;
 
-    const hasTermDrift =
-      lower.includes("net 45") && lower.includes("net 30");
+    const hasTermDrift = lower.includes("net 45") && lower.includes("net 30");
     const hasUndeclaredSurcharge =
       lower.includes("surcharge") &&
       (lower.includes("undeclared") || lower.includes("not present on prior"));
-    const hasMissingPo =
-      lower.includes("no po") || !/po\s*(?:#|no|number)?\s*[:\-]?\s*\d+/i.test(docText);
+    const explicitNoPo = lower.includes("no po referenced") || lower.includes("no po");
+    const poMatch = docText.match(/\bPO\s*(?:#|No|Number)?\s*[:\-]\s*([A-Za-z0-9\-]+)/i);
+    const hasMissingPo = explicitNoPo || !poMatch;
+
+    // Programmatic arithmetic verification when subtotal, tax, and total are present
+    const subtotalNum = parseCurrencyValue(subtotalStr);
+    const taxNum = parseCurrencyValue(taxStr);
+    const totalNum = parseCurrencyValue(totalStr);
+    let mathMismatchNote: string | null = null;
+    if (subtotalNum !== null && taxNum !== null && totalNum !== null) {
+      const expectedTotal = Math.round((subtotalNum + taxNum) * 100) / 100;
+      const actualTotal = Math.round(totalNum * 100) / 100;
+      if (Math.abs(expectedTotal - actualTotal) > 0.02) {
+        mathMismatchNote = `Subtotal (${subtotalStr}) + Tax (${taxStr}) equals ${expectedTotal.toFixed(2)}, which does not match stated Total (${totalStr}).`;
+      }
+    }
 
     const keyFields: KeyField[] = [];
     if (vendor) keyFields.push({ label: "Vendor", value: vendor, flagged: false });
@@ -205,92 +224,113 @@ export function analyzeDocumentDeterministic(
         value: terms,
         flagged: hasTermDrift,
         note: hasTermDrift
-          ? "Extended from baseline Net 30 to Net 45 without master contract amendment"
+          ? "Document notes payment terms shifted from Net 30 to Net 45"
           : undefined,
       });
     }
-    if (subtotal) keyFields.push({ label: "Subtotal", value: subtotal, flagged: false });
-    if (tax) keyFields.push({ label: "Tax", value: tax, flagged: false });
-    if (total) {
+    if (subtotalStr) keyFields.push({ label: "Subtotal", value: subtotalStr, flagged: false });
+    if (taxStr) keyFields.push({ label: "Tax", value: taxStr, flagged: false });
+    if (totalStr) {
       keyFields.push({
         label: "Total due",
-        value: total,
-        flagged: hasUndeclaredSurcharge,
-        note: hasUndeclaredSurcharge
-          ? "Includes undeclared surcharge line item not present on prior invoices"
-          : undefined,
+        value: totalStr,
+        flagged: Boolean(hasUndeclaredSurcharge || mathMismatchNote),
+        note:
+          mathMismatchNote ??
+          (hasUndeclaredSurcharge
+            ? "Includes surcharge line item flagged in document notes"
+            : undefined),
       });
     }
     if (hasMissingPo) {
       keyFields.push({
         label: "PO reference",
-        value: "Missing",
+        value: "Not found in document",
         flagged: true,
-        note: "No purchase order referenced; blocks automated 3-way match",
+        note: "No Purchase Order number detected for 3-way match verification",
+      });
+    } else if (poMatch?.[1]) {
+      keyFields.push({
+        label: "PO reference",
+        value: poMatch[1],
+        flagged: false,
       });
     }
 
     const anomalies: Anomaly[] = [];
+    if (mathMismatchNote) {
+      anomalies.push({
+        title: "Invoice total arithmetic discrepancy",
+        severity: "high",
+        note: mathMismatchNote,
+      });
+    }
     if (hasUndeclaredSurcharge) {
       anomalies.push({
-        title: "Undeclared fuel surcharge ($2,010.00)",
+        title: "Uncontracted or undeclared surcharge line item",
         severity: "high",
-        note: "Fuel surcharge line item appears without contract authorization and was absent on the prior 4 invoices.",
+        note: "Document contains a surcharge line item explicitly noted as undeclared or absent from prior invoices.",
       });
     }
     if (hasTermDrift) {
       anomalies.push({
-        title: "Payment terms drift (Net 30 → Net 45)",
+        title: "Payment terms modification (Net 30 to Net 45)",
         severity: "medium",
-        note: "Payment terms were modified from the standard Net 30 schedule without a signed procurement addendum.",
+        note: "Document text indicates Net terms were changed from Net 30 to Net 45; verify whether procurement approved this change.",
       });
     }
     if (hasMissingPo) {
       anomalies.push({
         title: "Missing Purchase Order (PO) reference",
         severity: "high",
-        note: "High-value invoice submitted without an associated PO number, bypassing pre-spend budget controls.",
-      });
-    }
-    if (lower.includes("peak surcharge")) {
-      anomalies.push({
-        title: "Q3 peak surcharge bundled into base freight",
-        severity: "medium",
-        note: "Peak surcharge is blended into the $31,800.00 freight forwarding line rather than itemized against rate caps.",
+        note: "No PO identifier is present in the supplied text, preventing automated 3-way match against an approved purchase order.",
       });
     }
 
-    const recommendations: Recommendation[] = [
-      {
-        title: "Short-pay or hold the undeclared surcharge pending rate-card proof",
+    const recommendations: Recommendation[] = [];
+    if (hasUndeclaredSurcharge || mathMismatchNote) {
+      recommendations.push({
+        title: "Hold disputed or unverified line items pending vendor documentation",
         rationale:
-          "Approve the verified base warehousing and freight lines only after the vendor supplies a signed rate schedule covering the fuel surcharge.",
-        estHoursRecovered: "3.5 hrs/week",
-      },
-      {
-        title: "Enforce mandatory PO matching for invoices over $5,000",
+          "Request written rate-card authorization or a corrected invoice from the vendor before approving the full billed amount.",
+        estHoursRecovered: null,
+      });
+    }
+    if (hasMissingPo) {
+      recommendations.push({
+        title: "Require a valid PO reference before routing to approval",
         rationale:
-          "Configure intake validation to auto-request a valid PO number from the vendor before routing to AP approval queues.",
-        estHoursRecovered: "6.2 hrs/week",
-      },
-      {
-        title: "Lock vendor master payment terms to Net 30 in ERP",
+          "Obtain a purchase order number or department-head sign-off so the invoice can be matched against authorized spend.",
+        estHoursRecovered: null,
+      });
+    }
+    if (hasTermDrift) {
+      recommendations.push({
+        title: "Verify payment terms against the master vendor record",
         rationale:
-          "Prevent invoice-level overrides of contracted Net terms unless countersigned by procurement.",
-        estHoursRecovered: "1.8 hrs/week",
-      },
-    ];
+          "Confirm whether the Net terms change in the document matches an executed contract amendment.",
+        estHoursRecovered: null,
+      });
+    }
+    if (recommendations.length === 0) {
+      recommendations.push({
+        title: "Verify extracted fields against your Purchase Order and receiving log",
+        rationale:
+          "Complete standard 3-way match verification before scheduling payment release.",
+        estHoursRecovered: null,
+      });
+    }
 
     return {
       docType: "invoice",
-      summary: `Parsed ${vendor ? `${vendor} ` : ""}invoice${invNo ? ` ${invNo}` : ""}${total ? ` totaling ${total}` : ""}. Flagged ${anomalies.length} operational anomalies requiring AP intervention before payment release.`,
+      summary: `Parsed supplied invoice text (${wordCount} words)${vendor ? ` from ${vendor}` : ""}${invNo ? ` (${invNo})` : ""}${totalStr ? ` with stated total ${totalStr}` : ""}. Surfaced ${anomalies.length} condition(s) directly from the provided text.`,
       keyFields:
         keyFields.length > 0
           ? keyFields
           : [
               {
-                label: "Document length",
-                value: `${docText.length} chars`,
+                label: "Word count",
+                value: `${wordCount} words`,
                 flagged: false,
               },
             ],
@@ -299,55 +339,72 @@ export function analyzeDocumentDeterministic(
     };
   }
 
-  // Generic contract / SOP / document fallback
-  const wordCount = docText.split(/\s+/).filter(Boolean).length;
+  // Deterministic parsing for Contract, SOP, or general business text
+  const hasLiabilityMention = lower.includes("liability") || lower.includes("indemnif");
+  const hasAutoRenew = lower.includes("auto-renew") || lower.includes("automatic renewal");
+  const hasSlaMention = lower.includes("sla") || lower.includes("service level");
+
+  const keyFields: KeyField[] = [
+    { label: "Detected type", value: detectedType.toUpperCase(), flagged: false },
+    { label: "Supplied word count", value: `${wordCount} words`, flagged: false },
+    {
+      label: "Liability / indemnity clauses",
+      value: hasLiabilityMention ? "Present in text" : "Not detected in text",
+      flagged: !hasLiabilityMention && detectedType === "contract",
+      note:
+        !hasLiabilityMention && detectedType === "contract"
+          ? "No explicit limitation of liability or indemnity keywords found in the supplied excerpt"
+          : undefined,
+    },
+  ];
+
+  const anomalies: Anomaly[] = [];
+  if (hasAutoRenew) {
+    anomalies.push({
+      title: "Automatic renewal clause detected",
+      severity: "medium",
+      note: "The supplied text references automatic renewal; verify the required notice window prior to renewal.",
+    });
+  }
+  if (wordCount < 25) {
+    anomalies.push({
+      title: "Short document excerpt provided",
+      severity: "low",
+      note: `Only ${wordCount} words were supplied. Provide the full document text to extract complete terms and clauses.`,
+    });
+  }
+
+  const recommendations: Recommendation[] = [
+    {
+      title: "Review extracted clauses against your internal approval checklist",
+      rationale:
+        hasSlaMention || hasLiabilityMention
+          ? "Verify that the stated liability, SLA, and commercial terms align with your organization's standard tolerances."
+          : "Confirm key dates, counterparties, and escalation owners before final sign-off.",
+      estHoursRecovered: null,
+    },
+  ];
+
   return {
     docType: detectedType,
-    summary: `Analyzed ${detectedType.toUpperCase()} document (${wordCount} words). Extracted structural metadata, flagged operational risk points, and generated workflow prescriptions.`,
-    keyFields: [
-      { label: "Document classification", value: detectedType.toUpperCase(), flagged: false },
-      { label: "Word count", value: `${wordCount} words`, flagged: false },
-      {
-        label: "Exception rules defined",
-        value: lower.includes("approval") || lower.includes("threshold") ? "Partial" : "Missing",
-        flagged: !(lower.includes("approval") && lower.includes("threshold")),
-        note: "Explicit dollar thresholds and SLA escalation paths should be codified",
-      },
-    ],
-    anomalies: [
-      {
-        title: "Unbounded manual review step",
-        severity: "medium",
-        note: "Document does not specify an automated bypass threshold or SLA ceiling for routine low-risk items.",
-      },
-    ],
-    recommendations: [
-      {
-        title: "Codify tiered auto-approval thresholds",
-        rationale:
-          "Route standard items automatically and escalate only flagged variances to senior reviewers.",
-        estHoursRecovered: "4.5 hrs/week",
-      },
-      {
-        title: "Add structured field validation at intake",
-        rationale:
-          "Require counterparty ID, reference number, and effective dates before queueing for review.",
-        estHoursRecovered: "2.8 hrs/week",
-      },
-    ],
+    summary: `Analyzed supplied ${detectedType.toUpperCase()} text (${wordCount} words) using deterministic rule extraction. Only fields and clauses explicitly present in the input are reported.`,
+    keyFields,
+    anomalies,
+    recommendations,
   };
 }
 
 /**
- * Normalizes and validates untrusted JSON returned by an LLM so malformed
- * properties never crash client components.
+ * Strictly validates and normalizes untrusted JSON returned by an LLM.
+ * Strips unexpected properties, enforces array/string bounds, and guarantees valid enum values.
  */
 export function normalizeAnalysisPayload(
   rawObj: Record<string, unknown>,
   docTypeHint: "invoice" | "contract" | "sop" | "auto",
 ): StructuredAnalysis {
   const validDocTypes = new Set(["invoice", "contract", "sop", "other"]);
-  const rawDocType = typeof rawObj.docType === "string" ? rawObj.docType.toLowerCase() : "";
+  const rawDocType =
+    typeof rawObj.docType === "string" ? rawObj.docType.trim().toLowerCase() : "";
   const docType = (
     validDocTypes.has(rawDocType)
       ? rawDocType
@@ -358,16 +415,16 @@ export function normalizeAnalysisPayload(
 
   const summary =
     typeof rawObj.summary === "string" && rawObj.summary.trim()
-      ? rawObj.summary.trim()
-      : "Cadence analyzed the document and extracted key operational fields, anomalies, and prescriptions.";
+      ? rawObj.summary.trim().slice(0, 600)
+      : "Cadence analyzed the supplied document and extracted the fields and conditions below.";
 
   const keyFields: KeyField[] = Array.isArray(rawObj.keyFields)
     ? rawObj.keyFields
-        .filter((f): f is Record<string, unknown> => !!f && typeof f === "object")
+        .filter((f): f is Record<string, unknown> => !!f && typeof f === "object" && !Array.isArray(f))
         .slice(0, 12)
         .map((f) => ({
-          label: String(f.label ?? "Field").slice(0, 80),
-          value: f.value != null ? String(f.value).slice(0, 200) : "—",
+          label: String(f.label ?? "Field").trim().slice(0, 80) || "Field",
+          value: f.value != null ? String(f.value).trim().slice(0, 200) || "—" : "—",
           flagged: Boolean(f.flagged),
           note:
             typeof f.note === "string" && f.note.trim()
@@ -378,28 +435,28 @@ export function normalizeAnalysisPayload(
 
   const anomalies: Anomaly[] = Array.isArray(rawObj.anomalies)
     ? rawObj.anomalies
-        .filter((a): a is Record<string, unknown> => !!a && typeof a === "object")
+        .filter((a): a is Record<string, unknown> => !!a && typeof a === "object" && !Array.isArray(a))
         .slice(0, 8)
         .map((a) => {
           const sevRaw =
-            typeof a.severity === "string" ? a.severity.toLowerCase() : "low";
+            typeof a.severity === "string" ? a.severity.trim().toLowerCase() : "low";
           const severity: Anomaly["severity"] =
             sevRaw === "high" || sevRaw === "medium" ? sevRaw : "low";
           return {
-            title: String(a.title ?? "Operational anomaly").slice(0, 140),
+            title: String(a.title ?? "Detected condition").trim().slice(0, 140) || "Detected condition",
             severity,
-            note: String(a.note ?? "").slice(0, 320),
+            note: String(a.note ?? "").trim().slice(0, 320),
           };
         })
     : [];
 
   const recommendations: Recommendation[] = Array.isArray(rawObj.recommendations)
     ? rawObj.recommendations
-        .filter((r): r is Record<string, unknown> => !!r && typeof r === "object")
+        .filter((r): r is Record<string, unknown> => !!r && typeof r === "object" && !Array.isArray(r))
         .slice(0, 6)
         .map((r) => ({
-          title: String(r.title ?? "Recommended action").slice(0, 140),
-          rationale: String(r.rationale ?? "").slice(0, 320),
+          title: String(r.title ?? "Recommended action").trim().slice(0, 140) || "Recommended action",
+          rationale: String(r.rationale ?? "").trim().slice(0, 320),
           estHoursRecovered:
             typeof r.estHoursRecovered === "string" && r.estHoursRecovered.trim()
               ? r.estHoursRecovered.trim().slice(0, 40)

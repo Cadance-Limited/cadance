@@ -78,7 +78,10 @@ export function Nav() {
         className="absolute inset-x-0 top-0 h-px origin-left bg-gradient-to-r from-cadence/0 via-cadence/70 to-cadence/0"
       />
 
-      <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+      <nav
+        aria-label="Primary navigation"
+        className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6"
+      >
         <div className="flex items-center gap-3">
           <Link href="/" className="group flex items-center" aria-label="Cadence home">
             <Logo />
@@ -128,7 +131,7 @@ export function Nav() {
             variant="ghost"
             className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline-flex"
           >
-            <Link href="#demo">Sign in</Link>
+            <Link href="#demo">Try demo</Link>
           </Button>
           <Button
             asChild
@@ -144,6 +147,7 @@ export function Nav() {
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <button
+                type="button"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:hidden"
                 aria-label="Open menu"
               >
@@ -177,13 +181,6 @@ export function Nav() {
                     {l.label}
                   </Link>
                 ))}
-                <Link
-                  href="#demo"
-                  onClick={() => setMobileOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                >
-                  Sign in
-                </Link>
                 <div className="my-3 h-px bg-border" />
                 <Link
                   href="#cta"

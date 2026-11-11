@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ArrowUpRight,
   Sparkles,
@@ -27,28 +27,28 @@ type Change = {
 
 const changes: Change[] = [
   {
-    icon: Sparkles,
-    tag: "New",
-    title: "Document intelligence v2",
+    icon: Shield,
+    tag: "Security",
+    title: "SSRF-guarded URL ingestion & CSP hardening",
     detail:
-      "Drop a URL or paste a contract — Cadence now extracts key fields, flags anomalies with severity, and prescribes next moves with estimated hours recovered.",
-    date: "This week",
+      "URL analysis now validates DNS resolution, blocks private/loopback/metadata IP ranges, verifies redirects hop-by-hop, and enforces strict Content-Security-Policy and HSTS headers.",
+    date: "v1.0",
+  },
+  {
+    icon: Sparkles,
+    tag: "Reliability",
+    title: "Non-hallucinating deterministic fallback engine",
+    detail:
+      "Both diagnostic chat and document intelligence now explicitly badge Live AI vs. Deterministic Rule Engine mode, verify invoice subtotal/tax arithmetic, and never invent unverified metrics.",
+    date: "v1.0",
   },
   {
     icon: Zap,
-    tag: "Faster",
-    title: "Diagnostic reasoning traces",
+    tag: "Architecture",
+    title: "Database migration integrity & structured logging",
     detail:
-      "Every chat answer now ships with a visible reasoning trace: the records parsed, the rules applied, the bottleneck located — before the prescription.",
-    date: "This week",
-  },
-  {
-    icon: Shield,
-    tag: "Security",
-    title: "SOC 2 Type II achieved",
-    detail:
-      "Cadence completed its annual audit. Controls are continuously monitored; the report is available on request.",
-    date: "Last week",
+      "Added versioned Prisma SQL migrations, honest HTTP 503 error reporting when storage is unreachable, and correlation-ID server logs with automatic PII redaction.",
+    date: "v1.0",
   },
 ];
 
@@ -95,12 +95,8 @@ function ChangelogModal({
             What&apos;s new in Cadence
           </DialogTitle>
           <DialogDescription className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Ship notes from the last two weeks. We push continuously — this is the highlight reel.</span>
+            <span>Engineering release notes reflecting verified improvements in this repository.</span>
           </DialogDescription>
-          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
-            <span className="h-1 w-1 rounded-full bg-cadence" />
-            Last updated {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-          </div>
         </DialogHeader>
 
         <div className="flex flex-col gap-px bg-border">
@@ -137,11 +133,11 @@ function ChangelogModal({
 
         <div className="border-t border-border px-6 py-4">
           <a
-            href="#cta"
+            href="#demo"
             onClick={() => onOpenChange(false)}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
           >
-            Get access to try these
+            Try the hardened live demo
             <ArrowUpRight className="h-3.5 w-3.5" />
           </a>
         </div>

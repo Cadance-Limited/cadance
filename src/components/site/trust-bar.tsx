@@ -2,21 +2,21 @@
 
 import { useCountUp, useInView } from "@/hooks/use-count-up";
 
-const logos = [
-  "Northwind",
-  "Vela",
-  "Helix",
-  "Aurora",
-  "Quanta",
-  "Meridian",
+const domains = [
+  "Accounts Payable",
+  "Vendor Contracts",
+  "Procurement Ops",
+  "Freight & Logistics",
+  "SOP Compliance",
+  "Spend Audit",
 ];
 
-// numeric target + display formatting for the count-up animation
+// Verifiable architectural parameters of the Cadence engine (no fabricated customer metrics)
 const stats = [
-  { target: 1.2, suffix: "M+", decimals: 1, label: "documents analyzed" },
-  { target: 6.2, suffix: " hrs", decimals: 1, label: "saved per week, per team" },
-  { target: 73, suffix: "%", decimals: 0, label: "faster contract review" },
-  { target: 98, suffix: "%", decimals: 0, label: "anomaly recall vs. manual audit" },
+  { target: 3, suffix: " types", decimals: 0, label: "core document classes (Invoices, Contracts, SOPs)" },
+  { target: 8, suffix: "k chars", decimals: 0, label: "structured extraction window per request" },
+  { target: 4, suffix: " stages", decimals: 0, label: "reasoning, fields, anomalies & prescriptions" },
+  { target: 0, suffix: " silent", decimals: 0, label: "unverified auto-approvals without human review" },
 ];
 
 export function TrustBar() {
@@ -26,10 +26,10 @@ export function TrustBar() {
     <section className="relative border-y border-border bg-secondary/20">
       <div className="mx-auto max-w-6xl px-6 py-12">
         <p className="text-center text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Trusted by operations teams at modern companies
+          Purpose-built for document-heavy operational workflows
         </p>
         <div className="mask-fade-x mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-5 sm:gap-x-14">
-          {logos.map((name) => (
+          {domains.map((name) => (
             <span
               key={name}
               className="text-lg font-semibold tracking-tight text-muted-foreground/60 transition-colors hover:text-foreground"

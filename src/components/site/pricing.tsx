@@ -10,50 +10,50 @@ import { cn } from "@/lib/utils";
 
 const tiers = [
   {
-    name: "Starter",
+    name: "Preview",
     price: "Free",
-    cadence: "for individuals",
-    description: "Kick the tires on the live demo. No card, no login.",
+    cadence: "live in browser today",
+    description: "Evaluate the interactive diagnostic chat and document analyzer right now.",
     cta: { label: "Try the demo", href: "#demo" },
     primary: false,
     salesAction: false,
     features: [
-      "Diagnostic chat — 50 messages / month",
-      "Document analysis — 25 documents / month",
-      "Invoices, contracts, SOPs",
-      "Single workspace",
+      "Interactive diagnostic chat (live AI + rule engine)",
+      "Document analysis via pasted text or public URL",
+      "Invoices, contracts, and SOPs",
+      "No login or credit card required",
     ],
   },
   {
-    name: "Team",
+    name: "Team (Planned)",
     price: "$49",
-    cadence: "per seat / month",
-    description: "For ops teams that live in invoices and contracts.",
-    cta: { label: "Get access", href: "#cta" },
+    cadence: "proposed per seat / month",
+    description: "Planned tier for operations and finance teams joining the waitlist.",
+    cta: { label: "Join waitlist", href: "#cta" },
     primary: true,
     salesAction: false,
     features: [
-      "Unlimited diagnostic chat & analysis",
-      "Up to 5 seats",
-      "QuickBooks, NetSuite, DocuSign, Slack",
-      "Draft rules + approval queues",
-      "Anomaly alerts + weekly digest",
+      "Persistent shared team workspaces (planned)",
+      "Direct PDF, DOCX, and XLSX file uploads (planned)",
+      "Planned QuickBooks, NetSuite, DocuSign & Slack connectors",
+      "Configurable variance & approval threshold rules (planned)",
+      "Early cohort onboarding via waitlist",
     ],
   },
   {
-    name: "Scale",
+    name: "Scale (Planned)",
     price: "Custom",
-    cadence: "for the org",
-    description: "For finance and ops orgs that need guardrails.",
-    cta: { label: "Talk to us", href: "#cta" },
+    cadence: "proposed enterprise tier",
+    description: "Planned tier for organizations requiring custom deployment and identity controls.",
+    cta: { label: "Register interest", href: "#cta" },
     primary: false,
     salesAction: true,
     features: [
-      "SSO + SCIM, audit log, SOC 2",
-      "Custom diagnostic rules",
-      "Dedicated analyst + onboarding",
-      "SLA + priority model access",
-      "Private deployment options",
+      "Planned SSO (SAML/OIDC) & SCIM provisioning",
+      "Planned exportable audit logs & SOC 2 attestation",
+      "Custom diagnostic playbooks & onboarding",
+      "Private VPC or self-hosted deployment options",
+      "Architecture scoping with the engineering team",
     ],
   },
 ];
@@ -65,9 +65,9 @@ export function Pricing() {
     <section id="pricing" className="relative scroll-mt-20 py-24 sm:py-32">
       <div className="mx-auto max-w-6xl px-6">
         <SectionHeading
-          eyebrow="Pricing"
-          title="Priced like an analyst, not like software per seat."
-          description="Start free. Pay when Cadence is actually saving your team hours every week."
+          eyebrow="Planned Pricing"
+          title="Try the preview free today. Planned tiers for teams."
+          description="Billing and paid subscriptions are not active during the technical preview. Join the waitlist to lock in early access when Team and Scale workspaces launch."
         />
 
         <div className="mt-12 grid gap-4 md:grid-cols-3 md:gap-5">
@@ -96,7 +96,7 @@ export function Pricing() {
                     <span className="absolute inline-flex h-full w-full animate-cadence-pulse rounded-full bg-cadence" />
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cadence" />
                   </span>
-                  Most popular
+                  Planned cohort
                 </span>
               ) : null}
               <div className="flex items-baseline justify-between">

@@ -4,23 +4,28 @@ import * as React from "react";
 import { onWaitlistUpdated } from "@/lib/prompt-bus";
 
 /**
- * Fetches the live waitlist count from /api/subscribe (GET) and subscribes
- * to client-side waitlist updates so new signups increment the count immediately.
+ * Fetches the verified waitlist registration count from /api/subscribe (GET).
+ * Never invents or inflates counts with a hardcoded baseline; returns null
+ * while loading or if the database is unreachable.
  */
-export function useWaitlistCount(base = 412) {
+export function useWaitlistCount() {
   const [count, setCount] = React.useState<number | null>(null);
 
   const fetchCount = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/subscribe", { method: "GET", cache: "no-store" });
+      const res = await fetch("/api/subscribe", {
+        method: "GET",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
       const data = await res.json();
-      if (data?.ok && typeof data.count === "number") {
-        setCount(Math.max(data.count, base));
+      if (data?.ok && typeof data.count === "number" && data.count >= 0) {
+        setCount(data.count);
       }
     } catch {
-      /* keep fallback base */
+      /* leave count as null if unreachable */
     }
-  }, [base]);
+  }, []);
 
   React.useEffect(() => {
     fetchCount();
@@ -29,5 +34,5 @@ export function useWaitlistCount(base = 412) {
     });
   }, [fetchCount]);
 
-  return count ?? base;
+  return count;
 }
