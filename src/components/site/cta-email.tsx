@@ -1,143 +1,32 @@
-"use client";
-
-import * as React from "react";
-import { motion } from "framer-motion";
-import { ArrowRight, Check, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useWaitlistCount } from "@/hooks/use-waitlist-count";
-import { notifyWaitlistUpdated } from "@/lib/prompt-bus";
+// src/components/site/cta-email.tsx
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export function CTAEmail() {
-  const [email, setEmail] = React.useState("");
-  const [company, setCompany] = React.useState("");
-  const [status, setStatus] = React.useState<
-    "idle" | "loading" | "done" | "error"
-  >("idle");
-  const { toast } = useToast();
-  const waitlistCount = useWaitlistCount();
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (status === "loading") return;
-    setStatus("loading");
-    try {
-      const res = await fetch("/api/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          company: company.trim() || undefined,
-          source: "cta",
-        }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Try again");
-      setStatus("done");
-      notifyWaitlistUpdated();
-      toast({
-        title: "You're on the list",
-        description: data.message || "We'll reach out within 48 hours.",
-      });
-    } catch (err) {
-      setStatus("error");
-      toast({
-        title: "Couldn't capture that email",
-        description: err instanceof Error ? err.message : "Unknown error",
-        variant: "destructive",
-      });
-    }
-  }
-
   return (
-    <section id="cta" className="relative scroll-mt-20 py-24 sm:py-32">
-      <div className="mx-auto max-w-5xl px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5 }}
-          className="noise-overlay relative overflow-hidden rounded-3xl border border-border bg-card p-8 sm:p-14"
-        >
-          {/* ambient glow */}
-          <div className="pointer-events-none absolute inset-0 -z-10 bg-grid [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000_50%,transparent_100%)] opacity-60" />
-          <div className="pointer-events-none absolute left-1/2 top-0 -z-10 h-64 w-[640px] -translate-x-1/2 halo-conic animate-cadence-aurora opacity-60" />
-
-          <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
-            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/40 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-cadence-pulse rounded-full bg-cadence" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cadence" />
-              </span>
-              Private beta — rolling out now
-            </span>
-            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-semibold tabular-nums text-foreground">
-                {waitlistCount.toLocaleString()}+
-              </span>
-              operators already on the waitlist
-            </div>
-            <h2 className="mt-5 text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-5xl sm:leading-[1.05]">
-              Diagnose your operations.
-              <br />
-              <span className="text-muted-foreground">
-                Prescribe what&apos;s next.
-              </span>
-            </h2>
-            <p className="mt-4 max-w-md text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Join the waitlist with your work email. We&apos;ll send a private
-              access link within 48 hours — no credit card, no call required.
-            </p>
-
-            {status === "done" ? (
-              <div className="mt-8 flex items-center gap-2.5 rounded-xl border border-cadence/30 bg-cadence/[0.06] px-5 py-3 text-sm text-foreground">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cadence text-cadence-foreground">
-                  <Check className="h-3 w-3" />
-                </span>
-                You&apos;re on the list. Check your inbox for confirmation.
-              </div>
-            ) : (
-              <form
-                onSubmit={submit}
-                className="mt-8 flex w-full max-w-md flex-col gap-2.5 sm:flex-row"
-              >
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@company.com"
-                  className="h-11 flex-1 rounded-xl border border-border bg-background/40 px-4 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-foreground/30 focus:outline-none"
-                />
-                <input
-                  type="text"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  placeholder="Company (optional)"
-                  className="h-11 flex-1 rounded-xl border border-border bg-background/40 px-4 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-foreground/30 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={status === "loading"}
-                  className="shimmer-border inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-foreground px-5 text-sm font-medium text-background transition-all hover:translate-y-[-1px] disabled:opacity-60"
-                >
-                  {status === "loading" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      Get access
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
-
-            <p className="mt-4 text-xs text-muted-foreground/60">
-              By joining, you agree to get a couple of product emails from
-              Cadence. Unsubscribe anytime.
-            </p>
-          </div>
-        </motion.div>
+    <section className="relative overflow-hidden bg-zinc-950 py-24 sm:py-32 border-t border-white/10">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8 text-center">
+        <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+          Ready to automate your bottlenecks?
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-lg text-zinc-400">
+          Currently accepting 3 new clients for the current quarter. 
+          Book a 15-minute diagnostic call. No pitch, just the fix.
+        </p>
+        
+        <div className="mt-10 flex items-center justify-center gap-x-6">
+          <Link
+            href="https://calendly.com/your-calendly-link" // <- UPDATE THIS IN 2028
+            className="group flex items-center gap-2 rounded-full bg-emerald-500 px-8 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 transition-all"
+          >
+            Book Diagnostic Call
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
+        
+        <p className="mt-6 text-sm text-zinc-500">
+          Or email me directly at <a href="mailto:hello@cadance.com" className="text-zinc-300 hover:text-white underline">hello@cadance.com</a>
+        </p>
       </div>
     </section>
   );
