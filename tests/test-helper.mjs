@@ -4,17 +4,27 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 /**
- * Compiles TypeScript source modules (src/lib/*.ts and src/app/api/**\/route.ts)
- * into temporary ESM modules using TypeScript or Babel's TypeScript AST plugin
- * so `node --test` can execute unit and API route integration tests directly.
+ * Portable TypeScript test compiler helper:
+ * - Uses the project's declared `typescript` compiler (from node_modules) on local and CI runners
+ * - Falls back to `@babel/core` + `@babel/plugin-transform-typescript` in offline sandboxes
+ * - Automatically removes `.test-build` on process exit so temporary files never pollute the working tree
  */
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const require = createRequire(import.meta.url);
+const cacheDir = path.join(repoRoot, ".test-build");
+
+process.on("exit", () => {
+  try {
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+  } catch {
+    /* ignore */
+  }
+});
 
 export function transpileTsToEsm(source, filename, isTSX = false) {
-  let rewritten = source
+  const rewritten = source
     .replace(/from\s+["']@\/lib\/([A-Za-z0-9_-]+)["']/g, 'from "./$1.mjs"')
     .replace(/from\s+["'](\.\/[A-Za-z0-9_-]+)["']/g, 'from "$1.mjs"')
     .replace(/from\s+["']next\/server["']/g, 'from "./mock-next-server.mjs"')
@@ -45,10 +55,9 @@ export function transpileTsToEsm(source, filename, isTSX = false) {
   }
 }
 
-function writeTestMocks(cacheDir) {
-  // Mock next/server
+function writeTestMocks(targetDir) {
   fs.writeFileSync(
-    path.join(cacheDir, "mock-next-server.mjs"),
+    path.join(targetDir, "mock-next-server.mjs"),
     `export class NextResponse extends Response {
   static json(body, init = {}) {
     const headers = new Headers(init.headers || {});
@@ -66,9 +75,8 @@ export class NextRequest extends Request {}
     "utf8",
   );
 
-  // Mock z-ai-web-dev-sdk
   fs.writeFileSync(
-    path.join(cacheDir, "mock-zai-sdk.mjs"),
+    path.join(targetDir, "mock-zai-sdk.mjs"),
     `export let mockZaiBehavior = { mode: "success", content: "## Reasoning\\n- Live AI test\\n## Prescription\\n1. Action\\n## Open question\\nNext?" };
 export function setMockZaiBehavior(b) { mockZaiBehavior = b; }
 export default class ZAI {
@@ -90,9 +98,8 @@ export default class ZAI {
     "utf8",
   );
 
-  // Mock @prisma/client with controllable state
   fs.writeFileSync(
-    path.join(cacheDir, "mock-prisma.mjs"),
+    path.join(targetDir, "mock-prisma.mjs"),
     `export const mockWaitlistRows = new Map();
 export let mockDbShouldFail = false;
 export function setMockDbShouldFail(v) { mockDbShouldFail = v; }
@@ -101,6 +108,10 @@ export class PrismaClient {
   async $queryRaw() {
     if (mockDbShouldFail) throw new Error("SQLite disk I/O error");
     return [{ 1: 1 }];
+  }
+  async $queryRawUnsafe() {
+    if (mockDbShouldFail) throw new Error("SQLite disk I/O error");
+    return [];
   }
   waitlist = {
     create: async ({ data }) => {
@@ -127,7 +138,6 @@ export class PrismaClient {
 let compiledOnce = false;
 
 export function ensureCompiledCache() {
-  const cacheDir = path.join(repoRoot, ".test-build");
   if (compiledOnce && fs.existsSync(cacheDir)) return cacheDir;
   fs.mkdirSync(cacheDir, { recursive: true });
   writeTestMocks(cacheDir);
@@ -160,7 +170,7 @@ export function ensureCompiledCache() {
 }
 
 export async function loadTsModule(relPathFromRoot) {
-  const cacheDir = ensureCompiledCache();
+  const dir = ensureCompiledCache();
   const base = path.basename(relPathFromRoot);
   let targetFile = base.replace(/\.ts$/, ".mjs");
   if (relPathFromRoot === "src/app/api/route.ts") targetFile = "route-health.mjs";
@@ -168,12 +178,12 @@ export async function loadTsModule(relPathFromRoot) {
   if (relPathFromRoot === "src/app/api/analyze/route.ts") targetFile = "route-analyze.mjs";
   if (relPathFromRoot === "src/app/api/subscribe/route.ts") targetFile = "route-subscribe.mjs";
 
-  return import(path.join(cacheDir, targetFile));
+  return import(path.join(dir, targetFile));
 }
 
 export async function loadTestMocks() {
-  const cacheDir = ensureCompiledCache();
-  const zaiMock = await import(path.join(cacheDir, "mock-zai-sdk.mjs"));
-  const prismaMock = await import(path.join(cacheDir, "mock-prisma.mjs"));
+  const dir = ensureCompiledCache();
+  const zaiMock = await import(path.join(dir, "mock-zai-sdk.mjs"));
+  const prismaMock = await import(path.join(dir, "mock-prisma.mjs"));
   return { zaiMock, prismaMock };
 }

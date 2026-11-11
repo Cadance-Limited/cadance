@@ -10,8 +10,12 @@ node_modules
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# canonical lockfile is bun.lock — ignore competing npm lockfile
+package-lock.json
+
+# testing & temporary build caches
 /coverage
+/.test-build/
 
 # next.js
 /.next/
@@ -24,18 +28,20 @@ node_modules
 .DS_Store
 *.pem
 
-# debug
+# debug & runtime pid files
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.pid
+.zscripts/dev.pid
 
-# env files (can opt-in for committing if needed)
+# env files (commit .env.example, ignore actual .env files)
 .env*
+!.env.example
 
 # vercel
 .vercel
-
 
 # typescript
 *.tsbuildinfo
@@ -48,9 +54,14 @@ dev.log
 dev.out.log
 test
 prompt
-
 server.log
+
 # Skills directory
 /skills/
-# local database
+
+# local SQLite databases
 db/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

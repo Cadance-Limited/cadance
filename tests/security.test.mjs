@@ -85,6 +85,41 @@ test("SSRF Protection: resolveAndValidateHost blocks DNS rebinding to private IP
   const publicLookup = async () => [{ address: "93.184.216.34", family: 4 }];
   const okRes = await security.resolveAndValidateHost("safe.example.com", publicLookup);
   assert.equal(okRes.ok, true);
+  assert.equal(okRes.records[0].address, "93.184.216.34");
+});
+
+test("TOCTOU DNS Pinning: safeFetchExternalUrl pins the socket transport to the exact validated IP address", async () => {
+  let lookupCallCount = 0;
+  const singleLookup = async () => {
+    lookupCallCount += 1;
+    return [{ address: "93.184.216.34", family: 4 }];
+  };
+
+  let capturedPinnedIp = null;
+  let capturedHost = null;
+  const mockPinnedTransport = async ({ parsedUrl, pinnedAddress, pinnedFamily }) => {
+    capturedPinnedIp = pinnedAddress;
+    capturedHost = parsedUrl.hostname;
+    assert.equal(pinnedFamily, 4);
+    const body = new TextEncoder().encode("<html><title>Invoice 100</title><body>Total: $500</body></html>");
+    return {
+      status: 200,
+      headers: new Headers({ "content-type": "text/html; charset=utf-8" }),
+      bodyBytes: body,
+    };
+  };
+
+  const res = await security.safeFetchExternalUrl("https://vendor.example.com/inv.html", {
+    lookupFn: singleLookup,
+    pinnedTransport: mockPinnedTransport,
+  });
+
+  assert.equal(res.ok, true);
+  assert.equal(lookupCallCount, 1, "DNS lookup must occur exactly once per hop");
+  assert.equal(capturedPinnedIp, "93.184.216.34");
+  assert.equal(capturedHost, "vendor.example.com");
+  assert.equal(res.pinnedAddress, "93.184.216.34");
+  assert.equal(res.title, "Invoice 100");
 });
 
 test("SSRF Protection: safeFetchExternalUrl blocks redirect to internal metadata IP", async () => {
@@ -108,7 +143,6 @@ test("SSRF Protection: safeFetchExternalUrl blocks redirect to internal metadata
 test("SSRF Protection: safeFetchExternalUrl enforces Content-Type and byte size limits", async () => {
   const publicLookup = async () => [{ address: "93.184.216.34", family: 4 }];
 
-  // Disallowed binary content-type
   const binFetch = async () =>
     new Response("binary", {
       status: 200,
@@ -121,7 +155,6 @@ test("SSRF Protection: safeFetchExternalUrl enforces Content-Type and byte size 
   assert.equal(binRes.ok, false);
   assert.equal(binRes.status, 415);
 
-  // Oversized body stream
   const bigFetch = async () =>
     new Response("A".repeat(2048), {
       status: 200,

@@ -429,3 +429,30 @@ Task: QA sweep + new features (guided tour onboarding, assessment share button +
 - **Share button falls back to clipboard** — `navigator.share` isn't available in most desktop browsers, so the clipboard fallback is the common path. Works as designed.
 - **`.text-gradient-flow` custom CSS utility still unused** — inline Tailwind gradient classes remain the working approach. Low priority.
 - **Recommended next steps**: (a) add an OpenGraph image via Next.js `opengraph-image` route for social sharing, (b) add a "compare with alternatives" section (careful re: competitor naming), (c) add a dark/light theme preview toggle in the pricing section, (d) add recently-viewed indicator in the command palette, (e) add more inline glossary terms across the page, (f) add a "guided tour" trigger button in the footer for returning visitors, (g) add a confetti animation on high assessment scores, (h) add a "copy link" button on blog cards.
+
+
+---
+Task ID: 12
+Date: 2026-11-12
+Agent: Argon (Primary Engineering Owner)
+Objective: Full production hardening handover, P0 CI lockfile resolution, TOCTOU DNS-pinned SSRF transport, weighted sliding-window rate limiting, SQLite WAL concurrency, portable test suite, and engineering documentation suite.
+
+## Summary of Changes Made
+1. **P0 Dependency & Lockfile Reconciliation (`package.json`, `.gitignore`)**:
+   - Fixed `@radix-ui/react-select` version specifier in `package.json` from `^1.2.5` to `^2.2.5` (and restored workspace `"name": "nextjs_tailwind_shadcn_ts"`) to match `bun.lock` 100%, resolving the `bun install --frozen-lockfile` CI failure.
+   - Updated `.gitignore` to include `!.env.example` (so `.env.example` is not ignored by `.env*`), `.test-build/`, `.zscripts/dev.pid`, `*.pid`, and `package-lock.json`. Removed tracked `.zscripts/dev.pid`.
+2. **P1 TOCTOU-Safe Outbound URL Fetching (`src/lib/security.ts`)**:
+   - Implemented `defaultPinnedTransport` using Node's `http.request` / `https.request` with a custom socket `lookup` callback pinned directly to the DNS-validated `primaryRecord.address` and `servername: parsedUrl.hostname` for TLS SNI and certificate verification, eliminating the time-of-check/time-of-use DNS rebinding window.
+3. **P1 Weighted Sliding-Window Rate Limiter (`src/lib/rate-limit.ts`)**:
+   - Replaced fixed time buckets with a weighted sliding-window algorithm across `(prevWindow, currWindow)` in both in-memory and Upstash Redis REST modes.
+   - Replaced the static `"direct-client"` fallback key (when `TRUST_PROXY=false`) with a deterministic SHA-256 request-header fingerprint (`client_<16-hex>`) so unproxied visitors do not collide in a single bucket while spoofed `X-Forwarded-For` headers remain ignored.
+   - Enforced fail-closed behavior (`allowed: false`) in production when `ALLOW_IN_MEMORY_RATE_LIMIT=false` and Redis is absent or unreachable.
+4. **P1 Database Concurrency (`src/lib/db.ts`, `src/app/api/subscribe/route.ts`, `src/app/api/route.ts`)**:
+   - Added `ensureDatabaseReady()` to initialize SQLite `WAL` journal mode and `busy_timeout = 5000` on first connection.
+5. **P2 Portable Test Suite & Engineering Documentation (`tests/*.mjs`, `docs/*.md`)**:
+   - Updated `tests/test-helper.mjs` and `tests/contracts.test.mjs` to use the project's `typescript` compiler API when available (with fallback to `@babel/parser`), auto-remove `.test-build/` on exit, and verify `package.json` ↔ `bun.lock` specifier parity, TOCTOU IP pinning, and sliding-window rate limiting (`32/32` tests passing).
+   - Authored `docs/PROJECT_STATE.md`, `docs/ARCHITECTURE.md`, `docs/ENGINEERING_DECISIONS.md`, `docs/PRODUCTION_READINESS.md`, and `docs/DEVELOPMENT.md`.
+
+## Unresolved / External Requirements
+- Multi-instance horizontal scaling requires provisioning external PostgreSQL (`DATABASE_URL`) and Upstash Redis (`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`).
+- Live AI completions require runtime credentials for `z-ai-web-dev-sdk` (otherwise the application operates in badged `deterministic_fallback` mode).

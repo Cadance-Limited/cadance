@@ -26,8 +26,69 @@ function walkFiles(dir, extList = [".ts", ".tsx"]) {
   return results;
 }
 
+function parseSourceFilePortable(code, filename, isTSX) {
+  // 1. Prefer project's declared `typescript` dependency (works on any clean CI/dev machine)
+  try {
+    const ts = require("typescript");
+    const sf = ts.createSourceFile(
+      filename,
+      code,
+      ts.ScriptTarget.Latest,
+      true,
+      isTSX ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+    );
+    if (sf.parseDiagnostics && sf.parseDiagnostics.length > 0) {
+      throw new Error(sf.parseDiagnostics[0].messageText);
+    }
+    return;
+  } catch (err) {
+    if (err && err.code !== "MODULE_NOT_FOUND") {
+      throw err;
+    }
+  }
+
+  // 2. Fallback to @babel/parser (either in node_modules or offline VM system path)
+  let babelParser;
+  try {
+    babelParser = require("@babel/parser");
+  } catch {
+    babelParser = require("/usr/share/nodejs/@babel/parser");
+  }
+  babelParser.parse(code, {
+    sourceType: "module",
+    plugins: isTSX ? ["typescript", "jsx"] : ["typescript"],
+  });
+}
+
+test("P0 Lockfile & Gitignore Parity: package.json specifiers match bun.lock 100% and .gitignore tracks .env.example", () => {
+  const pkg = JSON.parse(readFile("package.json"));
+  const bunLockRaw = readFile("bun.lock");
+
+  // Extract root workspace block from bun.lock (JSONC with trailing commas)
+  const sanitizedLock = bunLockRaw.replace(/,(\s*[\]}])/g, "$1");
+  const bunLock = JSON.parse(sanitizedLock);
+  const lockRoot = bunLock.workspaces[""];
+
+  assert.equal(pkg.name, lockRoot.name, "package.json name must match bun.lock root workspace name");
+  assert.deepEqual(
+    pkg.dependencies,
+    lockRoot.dependencies,
+    "package.json dependencies must match bun.lock root workspace dependencies exactly",
+  );
+  assert.deepEqual(
+    pkg.devDependencies,
+    lockRoot.devDependencies,
+    "package.json devDependencies must match bun.lock root workspace devDependencies exactly",
+  );
+
+  const gitignore = readFile(".gitignore");
+  assert.ok(gitignore.includes("!.env.example"), ".gitignore must whitelist !.env.example");
+  assert.ok(gitignore.includes(".test-build/"), ".gitignore must ignore .test-build/");
+  assert.ok(fs.existsSync(path.join(repoRoot, ".env.example")), ".env.example must exist");
+  assert.equal(fs.existsSync(path.join(repoRoot, ".zscripts/dev.pid")), false, ".zscripts/dev.pid must not exist");
+});
+
 test("Phase 2C & 2D: Every .ts and .tsx file in src/ parses cleanly into a valid AST and all imports resolve", () => {
-  const babelParser = require("/usr/share/nodejs/@babel/parser");
   const srcDir = path.join(repoRoot, "src");
   const files = walkFiles(srcDir);
   assert.ok(files.length >= 80, `Expected at least 80 source files, found ${files.length}`);
@@ -36,13 +97,9 @@ test("Phase 2C & 2D: Every .ts and .tsx file in src/ parses cleanly into a valid
     const code = fs.readFileSync(file, "utf8");
     const isTSX = file.endsWith(".tsx");
     assert.doesNotThrow(() => {
-      babelParser.parse(code, {
-        sourceType: "module",
-        plugins: isTSX ? ["typescript", "jsx"] : ["typescript"],
-      });
+      parseSourceFilePortable(code, file, isTSX);
     }, `AST parse failed for ${file}`);
 
-    // Verify all internal @/* and relative imports resolve to existing files
     const importRegex = /from\s+["'](@\/[^"']+|(?:\.\.?\/)[^"']+)["']/g;
     let match;
     while ((match = importRegex.exec(code)) !== null) {
@@ -119,7 +176,7 @@ test("Phase 6 & 7: Marketing, Security, Testimonial, and TrustBar components con
   assert.equal(nav.includes(">Sign in<"), false);
 });
 
-test("Phase 7D & 10: Accessibility skip-link, reduced-motion CSS, and SEO sitemap/robots routes exist", () => {
+test("Phase 7D, 10 & 11: Accessibility, SEO routes, and engineering handover documentation suite exist", () => {
   const page = readFile("src/app/page.tsx");
   assert.ok(page.includes('href="#main-content"'));
   assert.ok(page.includes('id="main-content"'));
@@ -129,7 +186,18 @@ test("Phase 7D & 10: Accessibility skip-link, reduced-motion CSS, and SEO sitema
   assert.equal(css.includes("152 0)"), false);
   assert.equal(css.includes("160 0)"), false);
 
-  assert.ok(fs.existsSync(path.join(repoRoot, "src/app/sitemap.ts")));
-  assert.ok(fs.existsSync(path.join(repoRoot, "src/app/robots.ts")));
-  assert.ok(fs.existsSync(path.join(repoRoot, ".github/workflows/ci.yml")));
+  const requiredFiles = [
+    "src/app/sitemap.ts",
+    "src/app/robots.ts",
+    ".github/workflows/ci.yml",
+    "docs/PROJECT_STATE.md",
+    "docs/ARCHITECTURE.md",
+    "docs/ENGINEERING_DECISIONS.md",
+    "docs/PRODUCTION_READINESS.md",
+    "docs/DEVELOPMENT.md",
+    "worklog.md",
+  ];
+  for (const rel of requiredFiles) {
+    assert.ok(fs.existsSync(path.join(repoRoot, rel)), `Expected file to exist: ${rel}`);
+  }
 });

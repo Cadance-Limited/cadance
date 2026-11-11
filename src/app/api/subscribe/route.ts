@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, ensureDatabaseReady } from "@/lib/db";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sanitizeText } from "@/lib/security";
 import { getOrCreateRequestId, logger } from "@/lib/logger";
@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    await ensureDatabaseReady();
     let alreadyRegistered = false;
     try {
       await db.waitlist.create({
@@ -180,6 +181,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const requestId = getOrCreateRequestId(req?.headers);
   try {
+    await ensureDatabaseReady();
     const count = await db.waitlist.count();
     return NextResponse.json(
       { ok: true, count, requestId },
