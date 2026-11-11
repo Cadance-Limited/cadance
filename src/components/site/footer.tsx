@@ -7,6 +7,7 @@ import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 import { GlossaryTrigger } from "./glossary-trigger";
 import { useToast } from "@/hooks/use-toast";
+import { notifyWaitlistUpdated } from "@/lib/prompt-bus";
 
 const columns = [
   {
@@ -22,8 +23,8 @@ const columns = [
   {
     title: "Company",
     links: [
-      { label: "About", href: "#" },
-      { label: "Careers", href: "#" },
+      { label: "About", href: "#how" },
+      { label: "Careers", href: "#cta" },
       { label: "Security", href: "#security" },
       { label: "Contact", href: "#cta" },
     ],
@@ -32,9 +33,9 @@ const columns = [
     title: "Resources",
     links: [
       { label: "Field notes", href: "#blog" },
-      { label: "Docs", href: "#" },
-      { label: "Status", href: "#" },
-      { label: "API", href: "#" },
+      { label: "Docs", href: "#how" },
+      { label: "Status", href: "#roadmap" },
+      { label: "API", href: "#roadmap" },
     ],
   },
 ];
@@ -58,6 +59,7 @@ export function Footer() {
       if (!data.ok) throw new Error(data.error || "Try again");
       setStatus("done");
       setEmail("");
+      notifyWaitlistUpdated();
       toast({
         title: "Subscribed",
         description: "You'll get the next field note. Unsubscribe anytime.",
@@ -174,13 +176,13 @@ export function Footer() {
             © {new Date().getFullYear()} Cadence Labs. All rights reserved.
           </p>
           <div className="flex items-center gap-4 text-xs text-muted-foreground/60">
-            <Link href="#" className="transition-colors hover:text-foreground">
+            <Link href="#security" className="transition-colors hover:text-foreground">
               Privacy
             </Link>
-            <Link href="#" className="transition-colors hover:text-foreground">
+            <Link href="#security" className="transition-colors hover:text-foreground">
               Terms
             </Link>
-            <Link href="#" className="transition-colors hover:text-foreground">
+            <Link href="#security" className="transition-colors hover:text-foreground">
               SOC 2
             </Link>
           </div>

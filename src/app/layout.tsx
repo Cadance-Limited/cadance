@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "https://cadence.ai",
+  ),
   title: "Cadence — The AI operations analyst",
   description:
     "Cadence diagnoses your operations from invoices, contracts, and SOPs, then prescribes the workflow fixes that matter. Built for business teams.",
@@ -31,7 +34,8 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Cadence" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
+    shortcut: "/logo.svg",
   },
   openGraph: {
     title: "Cadence — The AI operations analyst",

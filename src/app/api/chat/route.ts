@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getZAI } from "@/lib/zai";
+import { getZAI, withTimeout } from "@/lib/zai";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { sanitizeText } from "@/lib/security";
+import {
+  generateDeterministicChatResponse,
+  type ChatTurn,
+} from "@/lib/diagnostics-engine";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -23,49 +29,86 @@ FORMAT
 - Keep total length under ~280 words. Tight beats long.
 - Never invent fake statistics if the user has not provided data; if you don't have the data, say so and ask for it.`;
 
-type ChatMessage = { role: "user" | "assistant"; content: string };
-
 export async function POST(req: NextRequest) {
+  const rateLimit = checkRateLimit(req.headers, {
+    namespace: "api:chat",
+    limit: 30,
+    windowMs: 60_000,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Rate limit exceeded. Please wait a moment before sending another question.",
+      },
+      { status: 429, headers: rateLimit.headers },
+    );
+  }
+
   try {
     const body = await req.json().catch(() => null);
-    const messages: ChatMessage[] = Array.isArray(body?.messages)
+    const rawMessages: unknown[] = Array.isArray(body?.messages)
       ? body.messages
       : [];
 
-    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const sanitized: ChatTurn[] = [];
+    for (const item of rawMessages) {
+      if (!item || typeof item !== "object") continue;
+      const rec = item as Record<string, unknown>;
+      const role = rec.role === "user" || rec.role === "assistant" ? rec.role : null;
+      const content = sanitizeText(rec.content, 4000);
+      if (role && content) {
+        sanitized.push({ role, content });
+      }
+    }
+
+    const lastUser = [...sanitized].reverse().find((m) => m.role === "user");
     if (!lastUser) {
       return NextResponse.json(
         { ok: false, error: "No user message provided." },
-        { status: 400 },
+        { status: 400, headers: rateLimit.headers },
       );
     }
 
     // Keep the conversation tight — last 8 messages max.
-    const trimmed = messages.slice(-8);
+    const trimmed = sanitized.slice(-8);
 
-    const zai = await getZAI();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: SYSTEM_PROMPT },
-        ...trimmed,
-      ],
-      thinking: { type: "disabled" },
-    });
-
-    const content = completion?.choices?.[0]?.message?.content?.trim();
-    if (!content) {
-      return NextResponse.json(
-        { ok: false, error: "The analyst returned an empty response." },
-        { status: 502 },
+    try {
+      const zai = await withTimeout(getZAI(), 8000, "Model initialization");
+      const completion = await withTimeout(
+        zai.chat.completions.create({
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            ...trimmed,
+          ],
+          thinking: { type: "disabled" },
+        }),
+        18000,
+        "Diagnostic completion",
       );
+
+      const content = completion?.choices?.[0]?.message?.content?.trim();
+      if (content) {
+        return NextResponse.json(
+          { ok: true, content, mode: "live" },
+          { headers: rateLimit.headers },
+        );
+      }
+    } catch {
+      // Fall through to deterministic diagnostic engine when ZAI SDK is unconfigured or unreachable
     }
 
-    return NextResponse.json({ ok: true, content });
+    const fallbackContent = generateDeterministicChatResponse(trimmed);
+    return NextResponse.json(
+      { ok: true, content: fallbackContent, mode: "deterministic" },
+      { headers: rateLimit.headers },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json(
       { ok: false, error: `Cadence is unavailable right now — ${message}` },
-      { status: 500 },
+      { status: 500, headers: rateLimit.headers },
     );
   }
 }

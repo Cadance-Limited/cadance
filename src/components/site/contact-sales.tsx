@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
 import { ArrowRight, Check, Loader2, Shield } from "lucide-react";
 import {
   Dialog,
@@ -11,6 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { notifyWaitlistUpdated } from "@/lib/prompt-bus";
 
 export function ContactSalesModal({
   open,
@@ -35,6 +35,7 @@ export function ContactSalesModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: name.trim() || undefined,
           email: email.trim(),
           company: company.trim() || undefined,
           role: seats ? `Scale — ${seats} seats` : "Scale",
@@ -44,6 +45,7 @@ export function ContactSalesModal({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Try again");
       setStatus("done");
+      notifyWaitlistUpdated();
       toast({
         title: "Request received",
         description: "A solutions engineer will reach out within one business day.",

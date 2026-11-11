@@ -6,13 +6,19 @@ import { BrainCircuit, FileSearch } from "lucide-react";
 import { SectionHeading } from "./section-heading";
 import { DemoChat } from "./demo-chat";
 import { DemoDocs } from "./demo-docs";
+import { onDemoTab, type DemoTab } from "@/lib/prompt-bus";
 import { cn } from "@/lib/utils";
 
-type Tab = "chat" | "docs";
-
 export function LiveDemo() {
-  const [tab, setTab] = React.useState<Tab>("chat");
+  const [tab, setTab] = React.useState<DemoTab>("chat");
   const sectionRef = React.useRef<HTMLElement>(null);
+
+  // Listen for programmatic tab switches (e.g. from CommandPalette)
+  React.useEffect(() => {
+    return onDemoTab((nextTab) => {
+      setTab(nextTab);
+    });
+  }, []);
 
   // ← / → keyboard navigation to switch tabs (only when demo section is in view)
   React.useEffect(() => {
@@ -64,7 +70,7 @@ export function LiveDemo() {
 
         {/* tabs */}
         <div className="mt-10 flex flex-col items-center gap-3">
-          <div className="inline-flex rounded-xl border border-border bg-card p-1">
+          <div className="inline-flex rounded-xl border border-border bg-card p-1" role="tablist">
             <TabButton
               active={tab === "chat"}
               onClick={() => setTab("chat")}
@@ -118,6 +124,9 @@ function TabButton({
 }) {
   return (
     <button
+      type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
       className={cn(
         "relative inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",

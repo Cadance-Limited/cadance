@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cookie } from "lucide-react";
+import { notifyCookieConsentUpdated } from "@/lib/prompt-bus";
 
 const STORAGE_KEY = "cadence:cookie-consent";
 
@@ -18,7 +19,6 @@ export function CookieConsent() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) {
-        // tiny delay so it doesn't fight with hero animations on load
         const t = setTimeout(() => setVisible(true), 1200);
         return () => clearTimeout(t);
       }
@@ -34,6 +34,7 @@ export function CookieConsent() {
       /* ignore */
     }
     setVisible(false);
+    notifyCookieConsentUpdated();
   }
 
   return (
@@ -54,7 +55,7 @@ export function CookieConsent() {
               We use cookies to remember your theme and keep the demo fast.
               No tracking, no ad pixels. Read our{" "}
               <Link
-                href="#"
+                href="#security"
                 className="font-medium text-foreground underline-offset-2 hover:underline"
               >
                 privacy policy
@@ -63,12 +64,14 @@ export function CookieConsent() {
             </p>
             <div className="flex shrink-0 items-center gap-2">
               <button
+                type="button"
                 onClick={() => decide("declined")}
                 className="inline-flex h-8 items-center rounded-lg border border-border bg-secondary/40 px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 Decline
               </button>
               <button
+                type="button"
                 onClick={() => decide("accepted")}
                 className="inline-flex h-8 items-center rounded-lg bg-foreground px-3 text-xs font-medium text-background transition-all hover:translate-y-[-1px]"
               >

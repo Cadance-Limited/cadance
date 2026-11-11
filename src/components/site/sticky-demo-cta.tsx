@@ -4,11 +4,12 @@ import * as React from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { onCookieConsentUpdated } from "@/lib/prompt-bus";
 
 /**
  * Sticky conversion bar that slides in once the user has scrolled
- * past the hero (≈ one viewport height). Stays until they reach the
- * final CTA section, then hides to avoid redundancy.
+ * past the hero (≈ one viewport height). Hides while the live demo
+ * or final CTA section is actively in view to avoid overlapping controls.
  */
 const CONSENT_KEY = "cadence:cookie-consent";
 
@@ -16,26 +17,38 @@ export function StickyDemoCTA() {
   const [visible, setVisible] = React.useState(false);
 
   React.useEffect(() => {
-    const onScroll = () => {
+    const evaluateVisibility = () => {
       const y = window.scrollY;
       const vh = window.innerHeight;
       const cta = document.getElementById("cta");
-      // Don't show if the cookie banner hasn't been decided yet — avoids overlap.
+      const demo = document.getElementById("demo");
+
       let consentDecided = true;
       try {
         consentDecided = !!localStorage.getItem(CONSENT_KEY);
       } catch {
         /* localStorage unavailable — default to decided */
       }
-      // show after hero (~1 viewport), hide when final CTA is in view
+
       const pastHero = y > vh * 0.9;
-      const ctaInView =
-        !!cta && cta.getBoundingClientRect().top < vh * 0.8;
-      setVisible(consentDecided && pastHero && !ctaInView);
+      const ctaInView = !!cta && cta.getBoundingClientRect().top < vh * 0.85;
+      const demoRect = demo?.getBoundingClientRect();
+      const demoInView =
+        !!demoRect && demoRect.top < vh * 0.65 && demoRect.bottom > vh * 0.25;
+
+      setVisible(consentDecided && pastHero && !ctaInView && !demoInView);
     };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+
+    evaluateVisibility();
+    window.addEventListener("scroll", evaluateVisibility, { passive: true });
+    window.addEventListener("resize", evaluateVisibility, { passive: true });
+    const unsubConsent = onCookieConsentUpdated(evaluateVisibility);
+
+    return () => {
+      window.removeEventListener("scroll", evaluateVisibility);
+      window.removeEventListener("resize", evaluateVisibility);
+      unsubConsent();
+    };
   }, []);
 
   return (

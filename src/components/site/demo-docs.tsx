@@ -125,6 +125,7 @@ export function DemoDocs() {
             Document
           </div>
           <button
+            type="button"
             onClick={loadSample}
             className="rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
@@ -176,6 +177,7 @@ export function DemoDocs() {
           </div>
 
           <button
+            type="button"
             onClick={analyze}
             disabled={loading}
             className="shimmer-border inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-all hover:translate-y-[-1px] disabled:opacity-50"
@@ -239,6 +241,7 @@ function ModeButton({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-medium transition-colors",
@@ -441,14 +444,16 @@ function Section({
   );
 }
 
-function SeverityBadge({ severity }: { severity: Anomaly["severity"] }) {
+function SeverityBadge({ severity }: { severity?: Anomaly["severity"] }) {
+  const safeSeverity: Anomaly["severity"] =
+    severity === "high" || severity === "medium" ? severity : "low";
   const styles =
-    severity === "high"
+    safeSeverity === "high"
       ? "border-destructive/30 bg-destructive/10 text-destructive"
-      : severity === "medium"
+      : safeSeverity === "medium"
         ? "border-amber-500/30 bg-amber-500/10 text-amber-500"
         : "border-border bg-secondary text-muted-foreground";
-  const label = severity[0].toUpperCase() + severity.slice(1);
+  const label = safeSeverity[0].toUpperCase() + safeSeverity.slice(1);
   return (
     <span
       className={cn(
@@ -460,4 +465,3 @@ function SeverityBadge({ severity }: { severity: Anomaly["severity"] }) {
     </span>
   );
 }
-

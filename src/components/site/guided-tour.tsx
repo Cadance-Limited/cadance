@@ -44,6 +44,16 @@ export function GuidedTour() {
   const [active, setActive] = React.useState(false);
   const [stepIdx, setStepIdx] = React.useState(0);
   const [rect, setRect] = React.useState<DOMRect | null>(null);
+  const [viewport, setViewport] = React.useState({ width: 1200, height: 800 });
+
+  const dismiss = React.useCallback(() => {
+    setActive(false);
+    try {
+      localStorage.setItem(STORAGE_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // Only show on first visit
   React.useEffect(() => {
@@ -56,36 +66,63 @@ export function GuidedTour() {
     return () => clearTimeout(t);
   }, []);
 
-  // Track the target element position
+  // Scroll target into view ONLY when the active step changes (never inside the scroll listener)
   React.useEffect(() => {
     if (!active) return;
-    const update = () => {
-      const step = steps[stepIdx];
-      const el = document.querySelector(step.target);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        setTimeout(() => {
-          setRect(el.getBoundingClientRect());
-        }, 400);
-      }
-    };
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
+    const step = steps[stepIdx];
+    const el = document.querySelector(step.target);
+    if (!el) return;
+
+    if (step.target === "header") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    const timer = setTimeout(() => {
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
+      setRect(el.getBoundingClientRect());
+    }, 350);
+
+    return () => clearTimeout(timer);
   }, [active, stepIdx]);
 
-  function dismiss() {
-    setActive(false);
-    try {
-      localStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-  }
+  // Passive position tracking on scroll/resize + Escape key to dismiss
+  React.useEffect(() => {
+    if (!active) return;
+    let rafId: number | null = null;
+
+    const syncRect = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        const step = steps[stepIdx];
+        const el = document.querySelector(step.target);
+        if (el) {
+          setViewport({ width: window.innerWidth, height: window.innerHeight });
+          setRect(el.getBoundingClientRect());
+        }
+      });
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        dismiss();
+      }
+    };
+
+    syncRect();
+    window.addEventListener("scroll", syncRect, { passive: true });
+    window.addEventListener("resize", syncRect, { passive: true });
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", syncRect);
+      window.removeEventListener("resize", syncRect);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [active, stepIdx, dismiss]);
 
   function next() {
     if (stepIdx < steps.length - 1) {
@@ -98,6 +135,19 @@ export function GuidedTour() {
   const step = steps[stepIdx];
   const isLast = stepIdx === steps.length - 1;
 
+  const tooltipLeft = rect
+    ? Math.min(Math.max(rect.left, 16), Math.max(16, viewport.width - 320 - 16))
+    : 16;
+
+  const rawTop = rect
+    ? step.placement === "bottom"
+      ? rect.bottom + 12
+      : step.placement === "top"
+        ? rect.top - 180
+        : rect.bottom + 12
+    : 16;
+  const tooltipTop = Math.min(Math.max(rawTop, 16), Math.max(16, viewport.height - 200));
+
   return (
     <AnimatePresence>
       {active && rect ? (
@@ -109,7 +159,6 @@ export function GuidedTour() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-[2px]"
             style={{
-              // cut a hole around the target element
               boxShadow: `0 0 0 9999px rgba(0,0,0,0.5)`,
               borderRadius: 12,
             }}
@@ -138,16 +187,8 @@ export function GuidedTour() {
             transition={{ duration: 0.25 }}
             className="fixed z-[61] w-80 rounded-xl border border-border bg-card p-4 shadow-2xl"
             style={{
-              left: Math.min(
-                Math.max(rect.left, 16),
-                window.innerWidth - 320 - 16,
-              ),
-              top:
-                step.placement === "bottom"
-                  ? rect.bottom + 12
-                  : step.placement === "top"
-                    ? Math.max(rect.top - 180, 16)
-                    : rect.bottom + 12,
+              left: tooltipLeft,
+              top: tooltipTop,
             }}
           >
             <div className="flex items-start justify-between gap-3">

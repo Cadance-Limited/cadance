@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWaitlistCount } from "@/hooks/use-waitlist-count";
+import { notifyWaitlistUpdated } from "@/lib/prompt-bus";
 
 export function CTAEmail() {
   const [email, setEmail] = React.useState("");
@@ -32,6 +33,7 @@ export function CTAEmail() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Try again");
       setStatus("done");
+      notifyWaitlistUpdated();
       toast({
         title: "You're on the list",
         description: data.message || "We'll reach out within 48 hours.",

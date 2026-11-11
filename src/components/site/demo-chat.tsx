@@ -4,7 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { ArrowUp, RotateCcw, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { onPrompt } from "@/lib/prompt-bus";
+import { consumePendingPrompt, onPrompt } from "@/lib/prompt-bus";
 import { cn } from "@/lib/utils";
 
 type Role = "user" | "assistant";
@@ -84,8 +84,13 @@ export function DemoChat() {
   const sendRef = React.useRef(send);
   sendRef.current = send;
 
-  // Listen for prompts dispatched from the command palette.
+  // Listen for prompts dispatched from the command palette (including queued prompts on mount).
   React.useEffect(() => {
+    const queued = consumePendingPrompt();
+    if (queued) {
+      sendRef.current(queued);
+      inputRef.current?.focus();
+    }
     return onPrompt((prompt) => {
       sendRef.current(prompt);
       inputRef.current?.focus();
@@ -111,6 +116,7 @@ export function DemoChat() {
           Diagnostic session
         </div>
         <button
+          type="button"
           onClick={reset}
           className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
@@ -144,6 +150,7 @@ export function DemoChat() {
             {EXAMPLES.map((ex) => (
               <button
                 key={ex}
+                type="button"
                 onClick={() => send(ex)}
                 disabled={loading}
                 className="rounded-full border border-border bg-secondary/40 px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:opacity-50"
@@ -173,6 +180,7 @@ export function DemoChat() {
             className="scrollbar-cadence max-h-32 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
           />
           <button
+            type="button"
             onClick={() => send(input)}
             disabled={loading || !input.trim()}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-background transition-all hover:translate-y-[-1px] disabled:translate-y-0 disabled:opacity-40"
@@ -285,4 +293,3 @@ function Markdown({ text }: { text: string }) {
     </div>
   );
 }
-

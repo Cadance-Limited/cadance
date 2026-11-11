@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import {
   BrainCircuit,
   FileSearch,
@@ -9,7 +8,6 @@ import {
   Sparkles,
   Sun,
   Terminal,
-  Zap,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -22,7 +20,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useTheme } from "next-themes";
-import { dispatchPrompt } from "@/lib/prompt-bus";
+import { dispatchDemoTab, dispatchPrompt } from "@/lib/prompt-bus";
 
 type Action = {
   id: string;
@@ -43,6 +41,7 @@ const navItems = [
   { label: "Security & compliance", href: "#security" },
   { label: "Roadmap", href: "#roadmap" },
   { label: "Pricing", href: "#pricing" },
+  { label: "Ops maturity check", href: "#assessment" },
   { label: "FAQ", href: "#faq" },
   { label: "Get access", href: "#cta" },
 ];
@@ -57,7 +56,6 @@ const examplePrompts = [
 export function CommandPalette() {
   const [open, setOpen] = React.useState(false);
   const { setTheme, resolvedTheme } = useTheme();
-  const router = useRouter();
 
   // ⌘K / Ctrl+K to open
   React.useEffect(() => {
@@ -73,7 +71,6 @@ export function CommandPalette() {
 
   const go = (href: string) => {
     setOpen(false);
-    // small delay so the dialog closes before scrolling
     setTimeout(() => {
       document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
     }, 50);
@@ -81,10 +78,10 @@ export function CommandPalette() {
 
   const runPrompt = (prompt: string) => {
     setOpen(false);
-    // navigate to demo first, then dispatch the prompt after the chat mounts
+    dispatchDemoTab("chat");
     const el = document.getElementById("demo");
     el?.scrollIntoView({ behavior: "smooth" });
-    setTimeout(() => dispatchPrompt(prompt), 600);
+    setTimeout(() => dispatchPrompt(prompt), 350);
   };
 
   const actions: Action[] = [
@@ -110,7 +107,10 @@ export function CommandPalette() {
       hint: "Live demo",
       icon: BrainCircuit,
       group: "demo" as const,
-      run: () => go("#demo"),
+      run: () => {
+        dispatchDemoTab("chat");
+        go("#demo");
+      },
     },
     {
       id: "demo-docs",
@@ -118,7 +118,10 @@ export function CommandPalette() {
       hint: "Live demo",
       icon: FileSearch,
       group: "demo" as const,
-      run: () => go("#demo"),
+      run: () => {
+        dispatchDemoTab("docs");
+        go("#demo");
+      },
     },
     {
       id: "theme",
@@ -136,6 +139,7 @@ export function CommandPalette() {
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
         className="group fixed bottom-5 right-5 z-40 hidden items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur transition-all hover:border-foreground/30 hover:text-foreground lg:inline-flex"
         aria-label="Open command palette"

@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getZAI } from "@/lib/zai";
+import { getZAI, withTimeout } from "@/lib/zai";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { sanitizeText, validateExternalUrl } from "@/lib/security";
+import {
+  analyzeDocumentDeterministic,
+  normalizeAnalysisPayload,
+} from "@/lib/diagnostics-engine";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 type DocType = "invoice" | "contract" | "sop" | "auto";
+const VALID_DOC_TYPES = new Set<DocType>(["invoice", "contract", "sop", "auto"]);
 
 const EXTRACTION_SYSTEM = `You are Cadence, an AI operations analyst. You are given a single business document (an invoice, a contract, an SOP, or arbitrary text) and must extract a structured analysis.
 
@@ -38,107 +45,187 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-function tryParseJson(raw: string): unknown | null {
-  // Try direct parse, then fenced, then greedy brace extraction.
-  const attempts = [
+function tryParseJson(raw: string): Record<string, unknown> | null {
+  if (!raw || typeof raw !== "string") return null;
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  const candidates = [
     raw,
     raw.replace(/```json\s*/i, "").replace(/```\s*$/i, ""),
-    raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1),
-  ];
-  for (const a of attempts) {
+    firstBrace !== -1 && lastBrace > firstBrace
+      ? raw.slice(firstBrace, lastBrace + 1)
+      : "",
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
     try {
-      return JSON.parse(a);
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
     } catch {
-      /* keep trying */
+      /* continue */
     }
   }
   return null;
 }
 
 export async function POST(req: NextRequest) {
+  const rateLimit = checkRateLimit(req.headers, {
+    namespace: "api:analyze",
+    limit: 20,
+    windowMs: 60_000,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Rate limit exceeded. Please wait a moment before analyzing another document.",
+      },
+      { status: 429, headers: rateLimit.headers },
+    );
+  }
+
   try {
     const body = await req.json().catch(() => null);
-    const url: string | undefined = body?.url;
-    const text: string | undefined = body?.text;
-    const docType: DocType = body?.docType ?? "auto";
+    const rawUrl = typeof body?.url === "string" ? body.url.trim() : "";
+    const rawText = sanitizeText(body?.text, 12000);
+    const rawDocType = typeof body?.docType === "string" ? body.docType : "auto";
+    const docType: DocType = VALID_DOC_TYPES.has(rawDocType as DocType)
+      ? (rawDocType as DocType)
+      : "auto";
 
-    if (!url && !text) {
+    if (!rawUrl && !rawText) {
       return NextResponse.json(
         { ok: false, error: "Provide either a URL or document text." },
-        { status: 400 },
+        { status: 400, headers: rateLimit.headers },
       );
     }
-
-    const zai = await getZAI();
 
     let sourceTitle = "Pasted document";
     let sourceUrl: string | null = null;
     let publishedTime: string | null = null;
     let docText = "";
 
-    if (url) {
-      const reader = await zai.functions.invoke("page_reader", { url });
-      const data = reader?.data;
-      if (!data?.html && !data?.text) {
+    if (rawUrl) {
+      const urlCheck = validateExternalUrl(rawUrl);
+      if (!urlCheck.ok) {
         return NextResponse.json(
-          { ok: false, error: "Couldn't read that page — it may be behind a paywall or login." },
-          { status: 502 },
+          { ok: false, error: urlCheck.error },
+          { status: 400, headers: rateLimit.headers },
         );
       }
-      sourceTitle = data.title || sourceTitle;
-      sourceUrl = data.url || url;
-      publishedTime = data.publishedTime ?? null;
-      docText = stripHtml(data.html || data.text || "").slice(0, 8000);
-    } else if (text) {
-      docText = text.slice(0, 8000);
+      const safeUrl = urlCheck.url;
+      sourceUrl = safeUrl;
+
+      try {
+        const zai = await withTimeout(getZAI(), 6000, "Reader init");
+        const reader = await withTimeout(
+          zai.functions.invoke("page_reader", { url: safeUrl }),
+          12000,
+          "Page reader",
+        );
+        const data = reader?.data;
+        if (data?.html || data?.text) {
+          sourceTitle = data.title || safeUrl;
+          sourceUrl = data.url || safeUrl;
+          publishedTime = data.publishedTime ?? null;
+          docText = stripHtml(data.html || data.text || "").slice(0, 8000);
+        }
+      } catch {
+        // Fallback to direct HTTP fetch if ZAI page_reader is unavailable
+      }
+
+      if (!docText) {
+        try {
+          const resp = await fetch(safeUrl, {
+            headers: {
+              "User-Agent": "Cadence-Document-Analyzer/1.0",
+              Accept: "text/html,text/plain,application/xhtml+xml",
+            },
+            signal: AbortSignal.timeout(8000),
+          });
+          if (resp.ok) {
+            const rawHtml = await resp.text();
+            const titleMatch = rawHtml.match(/<title[^>]*>([^<]+)<\/title>/i);
+            sourceTitle = titleMatch?.[1]?.trim() || safeUrl;
+            docText = stripHtml(rawHtml).slice(0, 8000);
+          }
+        } catch {
+          /* handled below */
+        }
+      }
+
+      if (!docText) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Couldn't read that page — it may be behind a paywall, login, or unavailable.",
+          },
+          { status: 502, headers: rateLimit.headers },
+        );
+      }
+    } else {
+      docText = rawText.slice(0, 8000);
     }
 
     if (!docText) {
       return NextResponse.json(
         { ok: false, error: "The document came back empty." },
-        { status: 422 },
+        { status: 422, headers: rateLimit.headers },
       );
     }
 
     const userPrompt = `Document type hint: ${docType === "auto" ? "auto-detect" : docType}\n\nDOCUMENT:\n"""\n${docText}\n"""`;
 
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: EXTRACTION_SYSTEM },
-        { role: "user", content: userPrompt },
-      ],
-      thinking: { type: "disabled" },
-    });
+    try {
+      const zai = await withTimeout(getZAI(), 6000, "Model init");
+      const completion = await withTimeout(
+        zai.chat.completions.create({
+          messages: [
+            { role: "system", content: EXTRACTION_SYSTEM },
+            { role: "user", content: userPrompt },
+          ],
+          thinking: { type: "disabled" },
+        }),
+        18000,
+        "Document extraction",
+      );
 
-    const raw = completion?.choices?.[0]?.message?.content ?? "";
-    const parsed = tryParseJson(raw);
+      const raw = completion?.choices?.[0]?.message?.content ?? "";
+      const parsed = tryParseJson(raw);
 
-    if (!parsed || typeof parsed !== "object") {
-      // Fallback — return a minimal payload plus the raw text so the UI stays useful.
-      return NextResponse.json({
-        ok: true,
-        fallback: true,
-        docType: docType === "auto" ? "other" : docType,
-        summary:
-          "Cadence read the document but couldn't structure it cleanly. The raw model output is attached.",
-        keyFields: [],
-        anomalies: [],
-        recommendations: [],
-        source: { title: sourceTitle, url: sourceUrl, publishedTime },
-        raw,
-      });
+      if (parsed) {
+        const normalized = normalizeAnalysisPayload(parsed, docType);
+        return NextResponse.json(
+          {
+            ok: true,
+            ...normalized,
+            source: { title: sourceTitle, url: sourceUrl, publishedTime },
+          },
+          { headers: rateLimit.headers },
+        );
+      }
+    } catch {
+      // Fall through to deterministic extraction engine
     }
 
-    return NextResponse.json({
-      ok: true,
-      ...(parsed as Record<string, unknown>),
-      source: { title: sourceTitle, url: sourceUrl, publishedTime },
-    });
+    const deterministic = analyzeDocumentDeterministic(docText, docType);
+    return NextResponse.json(
+      {
+        ok: true,
+        ...deterministic,
+        source: { title: sourceTitle, url: sourceUrl, publishedTime },
+      },
+      { headers: rateLimit.headers },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json(
       { ok: false, error: `Document analysis failed — ${message}` },
-      { status: 500 },
+      { status: 500, headers: rateLimit.headers },
     );
   }
 }
