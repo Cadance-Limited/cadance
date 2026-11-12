@@ -3,9 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { motion, useScroll, useSpring } from "framer-motion";
-import { Menu } from "lucide-react";
+import { Building2, Menu } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
+import { WorkspaceModal } from "./workspace-modal";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -29,6 +30,8 @@ export function Nav() {
   const [scrolled, setScrolled] = React.useState(false);
   const [active, setActive] = React.useState<string>("");
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = React.useState(false);
+  const [workspaceLabel, setWorkspaceLabel] = React.useState<string | null>(null);
   const changelog = useChangelog();
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, {
@@ -44,7 +47,6 @@ export function Nav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Scroll-spy: highlight the nav link for the section in view.
   React.useEffect(() => {
     const ids = links.map((l) => l.href.slice(1));
     const observer = new IntersectionObserver(
@@ -127,11 +129,13 @@ export function Nav() {
         <div className="flex items-center gap-2">
           <ThemeToggle className="hidden sm:inline-flex" />
           <Button
-            asChild
+            type="button"
             variant="ghost"
-            className="hidden text-sm font-medium text-muted-foreground hover:text-foreground sm:inline-flex"
+            onClick={() => setWorkspaceOpen(true)}
+            className="hidden items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground sm:inline-flex"
           >
-            <Link href="#demo">Try demo</Link>
+            <Building2 className="h-3.5 w-3.5 text-cadence" />
+            {workspaceLabel || "Workspace"}
           </Button>
           <Button
             asChild
@@ -181,6 +185,17 @@ export function Nav() {
                     {l.label}
                   </Link>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setWorkspaceOpen(true);
+                  }}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  <Building2 className="h-4 w-4 text-cadence" />
+                  {workspaceLabel || "Workspace"}
+                </button>
                 <div className="my-3 h-px bg-border" />
                 <Link
                   href="#cta"
@@ -198,6 +213,12 @@ export function Nav() {
           </Sheet>
         </div>
       </nav>
+
+      <WorkspaceModal
+        open={workspaceOpen}
+        onOpenChange={setWorkspaceOpen}
+        onSessionChange={(_u, ws) => setWorkspaceLabel(ws?.name ?? null)}
+      />
     </header>
   );
 }

@@ -5,12 +5,15 @@ import { motion } from "framer-motion";
 import {
   AlertTriangle,
   Check,
+  Download,
   FileText,
   Lightbulb,
   Link2,
   Loader2,
   Sparkles,
+  Upload,
 } from "lucide-react";
+import { notifyWorkspaceUpdated } from "@/lib/prompt-bus";
 import { cn } from "@/lib/utils";
 
 type KeyField = {
@@ -28,6 +31,7 @@ type Recommendation = {
 type Analysis = {
   ok: boolean;
   mode?: "live_ai" | "deterministic_fallback";
+  savedRunId?: string | null;
   notice?: string;
   docType?: string;
   summary?: string;
@@ -39,7 +43,7 @@ type Analysis = {
   fallback?: boolean;
 };
 
-type Mode = "text" | "url";
+type Mode = "text" | "file" | "url";
 type DocType = "auto" | "invoice" | "contract" | "sop";
 
 const SAMPLE_INVOICE = `INVOICE
@@ -73,25 +77,57 @@ export function DemoDocs() {
   const [docType, setDocType] = React.useState<DocType>("auto");
   const [text, setText] = React.useState("");
   const [url, setUrl] = React.useState("");
+  const [fileName, setFileName] = React.useState<string>("");
+  const [fileBase64, setFileBase64] = React.useState<string>("");
   const [loading, setLoading] = React.useState(false);
   const [result, setResult] = React.useState<Analysis | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  function handleFileChange(file: File | undefined) {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      setError("File exceeds the 4 MB upload limit.");
+      return;
+    }
+    setError(null);
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setFileBase64(reader.result);
+      }
+    };
+    reader.onerror = () => {
+      setError("Could not read the selected file.");
+    };
+    reader.readAsDataURL(file);
+  }
 
   async function analyze() {
     setError(null);
     setResult(null);
-    const payload =
-      mode === "url"
-        ? { url: url.trim(), docType }
-        : { text: text.trim(), docType };
-    if (mode === "url" && !payload.url) {
+
+    if (mode === "url" && !url.trim()) {
       setError("Paste a URL first.");
       return;
     }
-    if (mode === "text" && !payload.text) {
+    if (mode === "text" && !text.trim()) {
       setError("Paste a document first.");
       return;
     }
+    if (mode === "file" && !fileBase64) {
+      setError("Select a file (.pdf, .docx, .xlsx, .csv, .txt) first.");
+      return;
+    }
+
+    const payload =
+      mode === "url"
+        ? { url: url.trim(), docType }
+        : mode === "file"
+          ? { fileName, fileBase64, docType }
+          : { text: text.trim(), docType };
+
     setLoading(true);
     try {
       const res = await fetch("/api/analyze", {
@@ -102,6 +138,9 @@ export function DemoDocs() {
       const data = (await res.json()) as Analysis;
       if (!data.ok) throw new Error(data.error || "Analysis failed");
       setResult(data);
+      if (data.savedRunId) {
+        notifyWorkspaceUpdated();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -115,6 +154,19 @@ export function DemoDocs() {
     setDocType("invoice");
     setResult(null);
     setError(null);
+  }
+
+  function exportResultJson() {
+    if (!result) return;
+    const blob = new Blob([JSON.stringify(result, null, 2)], {
+      type: "application/json",
+    });
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objUrl;
+    a.download = `cadence-analysis-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(objUrl);
   }
 
   return (
@@ -141,6 +193,9 @@ export function DemoDocs() {
             <ModeButton active={mode === "text"} onClick={() => setMode("text")}>
               Paste text
             </ModeButton>
+            <ModeButton active={mode === "file"} onClick={() => setMode("file")}>
+              <Upload className="h-3 w-3" /> Upload file
+            </ModeButton>
             <ModeButton active={mode === "url"} onClick={() => setMode("url")}>
               <Link2 className="h-3 w-3" /> From URL
             </ModeButton>
@@ -154,6 +209,34 @@ export function DemoDocs() {
               placeholder="Paste an invoice, contract, or SOP here…"
               className="scrollbar-cadence h-64 resize-none rounded-lg border border-border bg-background/40 p-3 font-mono text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:border-foreground/30 focus:outline-none"
             />
+          ) : mode === "file" ? (
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleFileChange(e.dataTransfer.files?.[0]);
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-64 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-background/40 p-4 text-center transition-colors hover:border-foreground/30"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.xlsx,.csv,.tsv,.json,.xml,.html,.md,.txt"
+                onChange={(e) => handleFileChange(e.target.files?.[0])}
+                className="hidden"
+                aria-label="Upload document file"
+              />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-secondary/40">
+                <Upload className="h-4 w-4 text-foreground" />
+              </span>
+              <div className="text-xs font-medium text-foreground">
+                {fileName || "Drop a file here or click to browse"}
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                Supports .pdf (text), .docx, .xlsx, .csv, .json, .html, .txt (max 4 MB)
+              </div>
+            </div>
           ) : (
             <input
               type="url"
@@ -220,15 +303,15 @@ export function DemoDocs() {
                   : "Deterministic rule engine"}
               </span>
             ) : null}
-            {result?.source?.url ? (
-              <a
-                href={result.source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="max-w-[180px] truncate text-xs text-muted-foreground hover:text-foreground"
+            {result ? (
+              <button
+                type="button"
+                onClick={exportResultJson}
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary/40 px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
               >
-                {result.source.title || result.source.url}
-              </a>
+                <Download className="h-3 w-3" />
+                Export JSON
+              </button>
             ) : null}
           </div>
         </div>
@@ -282,8 +365,7 @@ function EmptyState() {
         <FileText className="h-5 w-5 text-muted-foreground" />
       </div>
       <div className="text-sm text-muted-foreground">
-        Paste a document or load the sample invoice to see Cadence&apos;s
-        analysis.
+        Paste text, upload a document (.pdf, .docx, .xlsx, .csv), or load the sample invoice.
       </div>
       <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground/60">
         <span className="rounded-md border border-border bg-secondary/30 px-2 py-0.5">

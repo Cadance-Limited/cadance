@@ -6,6 +6,9 @@ import {
   sanitizeText,
   sanitizeUntrustedDocument,
 } from "@/lib/security";
+import { parseUploadedDocument } from "@/lib/file-parser";
+import { getAuthenticatedSession } from "@/lib/auth";
+import { db, ensureDatabaseReady } from "@/lib/db";
 import { getOrCreateRequestId, logger } from "@/lib/logger";
 import {
   analyzeDocumentDeterministic,
@@ -15,7 +18,7 @@ import {
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MAX_REQUEST_BYTES = 64 * 1024;
+const MAX_JSON_REQUEST_BYTES = 6 * 1024 * 1024; // 6 MB to accommodate base64-encoded 4 MB file uploads
 const MAX_DOC_CHARS = 8000;
 
 type DocType = "invoice" | "contract" | "sop" | "auto";
@@ -76,6 +79,55 @@ function tryParseJson(raw: string): Record<string, unknown> | null {
   return null;
 }
 
+async function persistWorkspaceRunIfAuthenticated(
+  reqHeaders: Headers,
+  requestId: string,
+  payload: {
+    docType: string;
+    sourceTitle: string;
+    sourceUrl: string | null;
+    mode: string;
+    summary: string;
+    resultObj: unknown;
+  },
+): Promise<string | null> {
+  const session = await getAuthenticatedSession(reqHeaders);
+  if (!session) return null;
+
+  try {
+    await ensureDatabaseReady();
+    const run = await db.diagnosticRun.create({
+      data: {
+        workspaceId: session.workspace.id,
+        userId: session.user.id,
+        runType: "DOCUMENT",
+        docType: payload.docType,
+        sourceTitle: payload.sourceTitle.slice(0, 160),
+        sourceUrl: payload.sourceUrl,
+        mode: payload.mode,
+        summary: payload.summary.slice(0, 500),
+        resultJson: JSON.stringify(payload.resultObj),
+      },
+    });
+    await db.auditLog.create({
+      data: {
+        workspaceId: session.workspace.id,
+        userId: session.user.id,
+        action: "document.analyzed",
+        metadataJson: JSON.stringify({
+          runId: run.id,
+          docType: payload.docType,
+          mode: payload.mode,
+        }),
+        requestId,
+      },
+    });
+    return run.id;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const requestId = getOrCreateRequestId(req.headers);
   const start = Date.now();
@@ -106,12 +158,12 @@ export async function POST(req: NextRequest) {
   }
 
   const contentLength = Number(req.headers.get("content-length") ?? "0");
-  if (contentLength > MAX_REQUEST_BYTES) {
+  if (contentLength > MAX_JSON_REQUEST_BYTES) {
     return NextResponse.json(
       {
         ok: false,
         code: "PAYLOAD_TOO_LARGE",
-        error: "Document payload exceeds the 64 KB request limit.",
+        error: "Request payload exceeds the maximum supported upload limit (4 MB file).",
         requestId,
       },
       { status: 413, headers: baseHeaders },
@@ -133,12 +185,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (Buffer.byteLength(rawBody, "utf8") > MAX_REQUEST_BYTES) {
+  if (Buffer.byteLength(rawBody, "utf8") > MAX_JSON_REQUEST_BYTES) {
     return NextResponse.json(
       {
         ok: false,
         code: "PAYLOAD_TOO_LARGE",
-        error: "Document payload exceeds the 64 KB request limit.",
+        error: "Request payload exceeds the maximum supported upload limit (4 MB file).",
         requestId,
       },
       { status: 413, headers: baseHeaders },
@@ -191,13 +243,15 @@ export async function POST(req: NextRequest) {
 
   const hasUrl = typeof body.url === "string" && body.url.trim().length > 0;
   const hasText = typeof body.text === "string" && body.text.trim().length > 0;
+  const hasFile =
+    typeof body.fileBase64 === "string" && body.fileBase64.trim().length > 0;
 
-  if (!hasUrl && !hasText) {
+  if (!hasUrl && !hasText && !hasFile) {
     return NextResponse.json(
       {
         ok: false,
         code: "VALIDATION_ERROR",
-        error: "Provide either a valid URL or document text.",
+        error: "Provide document text, an uploaded file, or a valid URL.",
         requestId,
       },
       { status: 400, headers: baseHeaders },
@@ -221,9 +275,31 @@ export async function POST(req: NextRequest) {
   const publishedTime: string | null = null;
   let docText = "";
 
-  if (hasUrl) {
-    // Controlled SSRF-hardened fetcher (validates scheme, ports, DNS records, redirects, Content-Type, and byte cap)
-    // Never delegates raw URL fetching to an unverified external page_reader service.
+  if (hasFile) {
+    const fileName =
+      typeof body.fileName === "string" && body.fileName.trim()
+        ? sanitizeText(body.fileName, 120)
+        : "uploaded-document.txt";
+    const base64Clean = (body.fileBase64 as string).replace(
+      /^data:[^;]+;base64,/,
+      "",
+    );
+    const fileBuf = Buffer.from(base64Clean, "base64");
+    const parsedFile = parseUploadedDocument(fileName, fileBuf);
+    if (!parsedFile.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "FILE_PARSE_FAILED",
+          error: parsedFile.error,
+          requestId,
+        },
+        { status: parsedFile.status, headers: baseHeaders },
+      );
+    }
+    sourceTitle = parsedFile.filename;
+    docText = parsedFile.extractedText.slice(0, MAX_DOC_CHARS);
+  } else if (hasUrl) {
     const fetched = await safeFetchExternalUrl((body.url as string).trim());
     if (!fetched.ok) {
       logger.warn("analyze.url_rejected_or_failed", {
@@ -291,10 +367,24 @@ export async function POST(req: NextRequest) {
     );
 
     const normalized = normalizeAnalysisPayload(parsed, docType);
+    const savedRunId = await persistWorkspaceRunIfAuthenticated(
+      req.headers,
+      requestId,
+      {
+        docType: normalized.docType,
+        sourceTitle,
+        sourceUrl,
+        mode: "live_ai",
+        summary: normalized.summary,
+        resultObj: normalized,
+      },
+    );
+
     logger.info("analyze.completed", {
       requestId,
       mode: "live_ai",
       docType: normalized.docType,
+      savedRunId,
       latencyMs: Date.now() - start,
     });
 
@@ -302,6 +392,7 @@ export async function POST(req: NextRequest) {
       {
         ok: true,
         mode: "live_ai",
+        savedRunId,
         ...normalized,
         source: { title: sourceTitle, url: sourceUrl, publishedTime },
         requestId,
@@ -316,10 +407,24 @@ export async function POST(req: NextRequest) {
     });
 
     const deterministic = analyzeDocumentDeterministic(safeDocText, docType);
+    const savedRunId = await persistWorkspaceRunIfAuthenticated(
+      req.headers,
+      requestId,
+      {
+        docType: deterministic.docType,
+        sourceTitle,
+        sourceUrl,
+        mode: "deterministic_fallback",
+        summary: deterministic.summary,
+        resultObj: deterministic,
+      },
+    );
+
     return NextResponse.json(
       {
         ok: true,
         mode: "deterministic_fallback",
+        savedRunId,
         notice:
           "Extracted via Cadence's deterministic rule engine because the external AI provider is not configured in this environment.",
         ...deterministic,

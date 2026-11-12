@@ -1,11 +1,12 @@
 /**
- * Cross-component event bus for demo prompts, tab switching, and waitlist count updates.
- * Queues prompts if DemoChat is not yet mounted (e.g., when switching from the Docs tab).
+ * Cross-component event bus for demo prompts, tab switching, waitlist updates,
+ * cookie consent, and authenticated workspace run synchronization.
  */
 export const PROMPT_EVENT = "cadence:prompt";
 export const DEMO_TAB_EVENT = "cadence:demo-tab";
 export const WAITLIST_UPDATED_EVENT = "cadence:waitlist-updated";
 export const COOKIE_CONSENT_EVENT = "cadence:cookie-consent-updated";
+export const WORKSPACE_UPDATED_EVENT = "cadence:workspace-updated";
 
 export type DemoTab = "chat" | "docs";
 
@@ -74,4 +75,15 @@ export function onCookieConsentUpdated(handler: () => void) {
   if (typeof window === "undefined") return () => {};
   window.addEventListener(COOKIE_CONSENT_EVENT, handler);
   return () => window.removeEventListener(COOKIE_CONSENT_EVENT, handler);
+}
+
+export function notifyWorkspaceUpdated() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(WORKSPACE_UPDATED_EVENT));
+}
+
+export function onWorkspaceUpdated(handler: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(WORKSPACE_UPDATED_EVENT, handler);
+  return () => window.removeEventListener(WORKSPACE_UPDATED_EVENT, handler);
 }

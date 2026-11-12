@@ -1,5 +1,4 @@
-// Cadence Prisma Schema
-// Supports SQLite for local development/single-node deployments and PostgreSQL for multi-instance production.
+// Cadence Multi-Tenant Prisma Schema (SQLite default for local/single-node; see schema.postgresql.prisma for multi-node cloud Postgres)
 
 generator client {
   provider = "prisma-client-js"
@@ -20,4 +19,86 @@ model Waitlist {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("STARTER") // STARTER | TEAM | SCALE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  sessions  Session[]
+  runs      DiagnosticRun[]
+  auditLogs AuditLog[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  role         String   @default("OWNER") // OWNER | ADMIN | MEMBER
+  workspaceId  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workspace    Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sessions     Session[]
+  runs         DiagnosticRun[]
+  auditLogs    AuditLog[]
+
+  @@index([workspaceId])
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  tokenHash   String   @unique
+  userId      String
+  workspaceId String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([expiresAt])
+}
+
+model DiagnosticRun {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String?
+  runType     String   // CHAT | DOCUMENT
+  docType     String   @default("other")
+  sourceTitle String
+  sourceUrl   String?
+  mode        String   // live_ai | deterministic_fallback
+  summary     String
+  resultJson  String   // Serialized structured analysis or chat transcript
+  createdAt   DateTime @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  userId       String?
+  action       String
+  metadataJson String?
+  requestId    String?
+  createdAt    DateTime @default(now())
+
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
 }

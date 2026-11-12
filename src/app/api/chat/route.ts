@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getZAI, retryWithBackoff, withTimeout } from "@/lib/zai";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sanitizeText, sanitizeUntrustedDocument } from "@/lib/security";
+import { getAuthenticatedSession } from "@/lib/auth";
+import { db, ensureDatabaseReady } from "@/lib/db";
 import { getOrCreateRequestId, logger } from "@/lib/logger";
 import {
   generateDeterministicChatResponse,
@@ -28,6 +30,45 @@ STYLE & STRUCTURE
 - Talk like a sharp, calm senior analyst — not a chatbot. No emoji. No hype.
 - Use Markdown with exactly three headings: ## Reasoning, ## Prescription, ## Open question.
 - Keep total length under ~280 words.`;
+
+async function persistChatRunIfAuthenticated(
+  reqHeaders: Headers,
+  requestId: string,
+  userPrompt: string,
+  assistantContent: string,
+  mode: string,
+): Promise<string | null> {
+  const session = await getAuthenticatedSession(reqHeaders);
+  if (!session) return null;
+
+  try {
+    await ensureDatabaseReady();
+    const run = await db.diagnosticRun.create({
+      data: {
+        workspaceId: session.workspace.id,
+        userId: session.user.id,
+        runType: "CHAT",
+        docType: "chat",
+        sourceTitle: userPrompt.slice(0, 120),
+        mode,
+        summary: assistantContent.replace(/#+\s*/g, "").slice(0, 240),
+        resultJson: JSON.stringify({ prompt: userPrompt, response: assistantContent }),
+      },
+    });
+    await db.auditLog.create({
+      data: {
+        workspaceId: session.workspace.id,
+        userId: session.user.id,
+        action: "chat.diagnosed",
+        metadataJson: JSON.stringify({ runId: run.id, mode }),
+        requestId,
+      },
+    });
+    return run.id;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(req: NextRequest) {
   const requestId = getOrCreateRequestId(req.headers);
@@ -244,9 +285,18 @@ export async function POST(req: NextRequest) {
       { maxAttempts: 2, baseDelayMs: 250, label: "chat_completion" },
     );
 
+    const savedRunId = await persistChatRunIfAuthenticated(
+      req.headers,
+      requestId,
+      lastMessage.content,
+      content,
+      "live_ai",
+    );
+
     logger.info("chat.completed", {
       requestId,
       mode: "live_ai",
+      savedRunId,
       latencyMs: Date.now() - start,
       turnCount: trimmed.length,
     });
@@ -256,6 +306,7 @@ export async function POST(req: NextRequest) {
         ok: true,
         content,
         mode: "live_ai",
+        savedRunId,
         requestId,
       },
       { headers: baseHeaders },
@@ -268,11 +319,20 @@ export async function POST(req: NextRequest) {
     });
 
     const fallbackContent = generateDeterministicChatResponse(trimmed);
+    const savedRunId = await persistChatRunIfAuthenticated(
+      req.headers,
+      requestId,
+      lastMessage.content,
+      fallbackContent,
+      "deterministic_fallback",
+    );
+
     return NextResponse.json(
       {
         ok: true,
         content: fallbackContent,
         mode: "deterministic_fallback",
+        savedRunId,
         notice:
           "Generated via Cadence's deterministic diagnostic rule engine because the external AI provider is not configured in this environment.",
         requestId,

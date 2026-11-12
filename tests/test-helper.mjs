@@ -101,9 +101,27 @@ export default class ZAI {
   fs.writeFileSync(
     path.join(targetDir, "mock-prisma.mjs"),
     `export const mockWaitlistRows = new Map();
+export const mockWorkspaces = new Map();
+export const mockUsers = new Map();
+export const mockSessions = new Map();
+export const mockRuns = [];
+export const mockAuditLogs = [];
 export let mockDbShouldFail = false;
+
 export function setMockDbShouldFail(v) { mockDbShouldFail = v; }
-export function resetMockDb() { mockWaitlistRows.clear(); mockDbShouldFail = false; }
+export function resetMockDb() {
+  mockWaitlistRows.clear();
+  mockWorkspaces.clear();
+  mockUsers.clear();
+  mockSessions.clear();
+  mockRuns.length = 0;
+  mockAuditLogs.length = 0;
+  mockDbShouldFail = false;
+}
+
+let idSeq = 1;
+function nextId(prefix) { return prefix + "_" + (idSeq++); }
+
 export class PrismaClient {
   async $queryRaw() {
     if (mockDbShouldFail) throw new Error("SQLite disk I/O error");
@@ -127,6 +145,98 @@ export class PrismaClient {
     count: async () => {
       if (mockDbShouldFail) throw new Error("Database connection refused");
       return mockWaitlistRows.size;
+    }
+  };
+  workspace = {
+    create: async ({ data }) => {
+      if (mockDbShouldFail) throw new Error("Database connection refused");
+      const ws = { id: nextId("ws"), createdAt: new Date(), updatedAt: new Date(), ...data };
+      mockWorkspaces.set(ws.id, ws);
+      return ws;
+    }
+  };
+  user = {
+    findUnique: async ({ where, include }) => {
+      if (mockDbShouldFail) throw new Error("Database connection refused");
+      for (const u of mockUsers.values()) {
+        if ((where.email && u.email === where.email) || (where.id && u.id === where.id)) {
+          if (include?.workspace) {
+            return { ...u, workspace: mockWorkspaces.get(u.workspaceId) };
+          }
+          return u;
+        }
+      }
+      return null;
+    },
+    create: async ({ data }) => {
+      if (mockDbShouldFail) throw new Error("Database connection refused");
+      const u = { id: nextId("usr"), createdAt: new Date(), updatedAt: new Date(), ...data };
+      mockUsers.set(u.id, u);
+      return u;
+    }
+  };
+  session = {
+    create: async ({ data }) => {
+      if (mockDbShouldFail) throw new Error("Database connection refused");
+      const s = { id: nextId("sess"), createdAt: new Date(), ...data };
+      mockSessions.set(s.tokenHash, s);
+      return s;
+    },
+    findUnique: async ({ where, include }) => {
+      if (mockDbShouldFail) throw new Error("Database connection refused");
+      const s = mockSessions.get(where.tokenHash);
+      if (!s) return null;
+      if (include) {
+        return {
+          ...s,
+          user: mockUsers.get(s.userId),
+          workspace: mockWorkspaces.get(s.workspaceId),
+        };
+      }
+      return s;
+    },
+    delete: async ({ where }) => {
+      for (const [k, v] of mockSessions.entries()) {
+        if (v.id === where.id) mockSessions.delete(k);
+      }
+    },
+    deleteMany: async ({ where }) => {
+      if (where.tokenHash) mockSessions.delete(where.tokenHash);
+      return { count: 1 };
+    }
+  };
+  diagnosticRun = {
+    create: async ({ data }) => {
+      if (mockDbShouldFail) throw new Error("Database connection refused");
+      const r = { id: nextId("run"), createdAt: new Date(), ...data };
+      mockRuns.push(r);
+      return r;
+    },
+    findMany: async ({ where }) => {
+      if (mockDbShouldFail) throw new Error("Database connection refused");
+      return mockRuns.filter((r) => r.workspaceId === where.workspaceId).reverse();
+    },
+    deleteMany: async ({ where }) => {
+      if (mockDbShouldFail) throw new Error("Database connection refused");
+      const before = mockRuns.length;
+      for (let i = mockRuns.length - 1; i >= 0; i--) {
+        if (mockRuns[i].id === where.id && mockRuns[i].workspaceId === where.workspaceId) {
+          mockRuns.splice(i, 1);
+        }
+      }
+      return { count: before - mockRuns.length };
+    }
+  };
+  auditLog = {
+    create: async ({ data }) => {
+      if (mockDbShouldFail) throw new Error("Database connection refused");
+      const a = { id: nextId("audit"), createdAt: new Date(), ...data };
+      mockAuditLogs.push(a);
+      return a;
+    },
+    findMany: async ({ where }) => {
+      if (mockDbShouldFail) throw new Error("Database connection refused");
+      return mockAuditLogs.filter((a) => a.workspaceId === where.workspaceId).reverse();
     }
   };
 }
@@ -157,6 +267,8 @@ export function ensureCompiledCache() {
     ["src/app/api/chat/route.ts", "route-chat.mjs"],
     ["src/app/api/analyze/route.ts", "route-analyze.mjs"],
     ["src/app/api/subscribe/route.ts", "route-subscribe.mjs"],
+    ["src/app/api/auth/session/route.ts", "route-auth-session.mjs"],
+    ["src/app/api/workspace/runs/route.ts", "route-workspace-runs.mjs"],
   ];
   for (const [rel, outName] of routes) {
     const fullPath = path.join(repoRoot, rel);
@@ -177,6 +289,8 @@ export async function loadTsModule(relPathFromRoot) {
   if (relPathFromRoot === "src/app/api/chat/route.ts") targetFile = "route-chat.mjs";
   if (relPathFromRoot === "src/app/api/analyze/route.ts") targetFile = "route-analyze.mjs";
   if (relPathFromRoot === "src/app/api/subscribe/route.ts") targetFile = "route-subscribe.mjs";
+  if (relPathFromRoot === "src/app/api/auth/session/route.ts") targetFile = "route-auth-session.mjs";
+  if (relPathFromRoot === "src/app/api/workspace/runs/route.ts") targetFile = "route-workspace-runs.mjs";
 
   return import(path.join(dir, targetFile));
 }
