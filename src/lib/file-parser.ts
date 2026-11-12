@@ -298,7 +298,7 @@ export function parseUploadedDocument(
   }
 
   const rawText = buffer.toString("utf8");
-  let detectedFormat: ParsedFileResult & { ok: true }["detectedFormat"] = "text";
+  let detectedFormat: Extract<ParsedFileResult, { ok: true }>["detectedFormat"] = "text";
   let cleaned = rawText;
 
   if (lowerName.endsWith(".csv") || lowerName.endsWith(".tsv")) {
