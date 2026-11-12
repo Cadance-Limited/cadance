@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getZAI, retryWithBackoff, withTimeout } from "@/lib/zai";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { sanitizeText, sanitizeUntrustedDocument } from "@/lib/security";
-import { getAuthenticatedSession } from "@/lib/auth";
+import {
+  readBoundedJsonBody,
+  sanitizeText,
+  sanitizeUntrustedDocument,
+} from "@/lib/security";
+import {
+  getAuthenticatedSession,
+  hasWorkspacePermission,
+} from "@/lib/auth";
 import { db, ensureDatabaseReady } from "@/lib/db";
 import { getOrCreateRequestId, logger } from "@/lib/logger";
 import {
@@ -31,7 +38,7 @@ STYLE & STRUCTURE
 - Use Markdown with exactly three headings: ## Reasoning, ## Prescription, ## Open question.
 - Keep total length under ~280 words.`;
 
-async function persistChatRunIfAuthenticated(
+async function persistChatRunIfAuthorized(
   reqHeaders: Headers,
   requestId: string,
   userPrompt: string,
@@ -39,30 +46,38 @@ async function persistChatRunIfAuthenticated(
   mode: string,
 ): Promise<string | null> {
   const session = await getAuthenticatedSession(reqHeaders);
-  if (!session) return null;
+  if (!session || !hasWorkspacePermission(session.user.role, "runs:write")) {
+    return null;
+  }
 
   try {
     await ensureDatabaseReady();
-    const run = await db.diagnosticRun.create({
-      data: {
-        workspaceId: session.workspace.id,
-        userId: session.user.id,
-        runType: "CHAT",
-        docType: "chat",
-        sourceTitle: userPrompt.slice(0, 120),
-        mode,
-        summary: assistantContent.replace(/#+\s*/g, "").slice(0, 240),
-        resultJson: JSON.stringify({ prompt: userPrompt, response: assistantContent }),
-      },
-    });
-    await db.auditLog.create({
-      data: {
-        workspaceId: session.workspace.id,
-        userId: session.user.id,
-        action: "chat.diagnosed",
-        metadataJson: JSON.stringify({ runId: run.id, mode }),
-        requestId,
-      },
+    const run = await db.$transaction(async (tx) => {
+      const created = await tx.diagnosticRun.create({
+        data: {
+          workspaceId: session.workspace.id,
+          userId: session.user.id,
+          runType: "CHAT",
+          docType: "chat",
+          sourceTitle: userPrompt.slice(0, 120),
+          mode,
+          summary: assistantContent.replace(/#+\s*/g, "").slice(0, 240),
+          resultJson: JSON.stringify({
+            prompt: userPrompt,
+            response: assistantContent,
+          }),
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          workspaceId: session.workspace.id,
+          userId: session.user.id,
+          action: "chat.diagnosed",
+          metadataJson: JSON.stringify({ runId: created.id, mode }),
+          requestId,
+        },
+      });
+      return created;
     });
     return run.id;
   } catch {
@@ -99,65 +114,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const contentLength = Number(req.headers.get("content-length") ?? "0");
-  if (contentLength > MAX_REQUEST_BYTES) {
+  const bodyRes = await readBoundedJsonBody(req, MAX_REQUEST_BYTES);
+  if (!bodyRes.ok) {
     return NextResponse.json(
       {
         ok: false,
-        code: "PAYLOAD_TOO_LARGE",
-        error: "Request payload exceeds the 64 KB limit.",
+        code: bodyRes.code,
+        error: bodyRes.error,
         requestId,
       },
-      { status: 413, headers: baseHeaders },
+      { status: bodyRes.status, headers: baseHeaders },
     );
   }
 
-  let rawTextBody = "";
-  try {
-    rawTextBody = await req.text();
-  } catch {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "INVALID_BODY",
-        error: "Unable to read request body.",
-        requestId,
-      },
-      { status: 400, headers: baseHeaders },
-    );
-  }
-
-  if (Buffer.byteLength(rawTextBody, "utf8") > MAX_REQUEST_BYTES) {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "PAYLOAD_TOO_LARGE",
-        error: "Request payload exceeds the 64 KB limit.",
-        requestId,
-      },
-      { status: 413, headers: baseHeaders },
-    );
-  }
-
-  let body: Record<string, unknown> | null = null;
-  try {
-    const parsed = JSON.parse(rawTextBody);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      body = parsed as Record<string, unknown>;
-    }
-  } catch {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "INVALID_JSON",
-        error: "Request body must be valid JSON.",
-        requestId,
-      },
-      { status: 400, headers: baseHeaders },
-    );
-  }
-
-  if (!body || !Array.isArray(body.messages)) {
+  const body = bodyRes.data;
+  if (!Array.isArray(body.messages)) {
     return NextResponse.json(
       {
         ok: false,
@@ -285,7 +256,7 @@ export async function POST(req: NextRequest) {
       { maxAttempts: 2, baseDelayMs: 250, label: "chat_completion" },
     );
 
-    const savedRunId = await persistChatRunIfAuthenticated(
+    const savedRunId = await persistChatRunIfAuthorized(
       req.headers,
       requestId,
       lastMessage.content,
@@ -319,7 +290,7 @@ export async function POST(req: NextRequest) {
     });
 
     const fallbackContent = generateDeterministicChatResponse(trimmed);
-    const savedRunId = await persistChatRunIfAuthenticated(
+    const savedRunId = await persistChatRunIfAuthorized(
       req.headers,
       requestId,
       lastMessage.content,

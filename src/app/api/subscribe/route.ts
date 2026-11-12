@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, ensureDatabaseReady } from "@/lib/db";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { sanitizeText } from "@/lib/security";
+import { readBoundedJsonBody, sanitizeText } from "@/lib/security";
 import { getOrCreateRequestId, logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
-const EMAIL_RE = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
+const EMAIL_RE =
+  /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
 
 export async function POST(req: NextRequest) {
   const requestId = getOrCreateRequestId(req.headers);
@@ -36,64 +37,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const contentLength = Number(req.headers.get("content-length") ?? "0");
-  if (contentLength > MAX_REQUEST_BYTES) {
+  const bodyRes = await readBoundedJsonBody(req, MAX_REQUEST_BYTES);
+  if (!bodyRes.ok) {
     return NextResponse.json(
       {
         ok: false,
-        code: "PAYLOAD_TOO_LARGE",
-        error: "Request body exceeds the 16 KB limit.",
+        code: bodyRes.code,
+        error: bodyRes.error,
         requestId,
       },
-      { status: 413, headers: baseHeaders },
+      { status: bodyRes.status, headers: baseHeaders },
     );
   }
 
-  let rawBody = "";
-  try {
-    rawBody = await req.text();
-  } catch {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "INVALID_BODY",
-        error: "Unable to read request body.",
-        requestId,
-      },
-      { status: 400, headers: baseHeaders },
-    );
-  }
-
-  if (Buffer.byteLength(rawBody, "utf8") > MAX_REQUEST_BYTES) {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "PAYLOAD_TOO_LARGE",
-        error: "Request body exceeds the 16 KB limit.",
-        requestId,
-      },
-      { status: 413, headers: baseHeaders },
-    );
-  }
-
-  let body: Record<string, unknown> | null = null;
-  try {
-    const parsed = JSON.parse(rawBody);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      body = parsed as Record<string, unknown>;
-    }
-  } catch {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "INVALID_JSON",
-        error: "Request body must be valid JSON.",
-        requestId,
-      },
-      { status: 400, headers: baseHeaders },
-    );
-  }
-
+  const body = bodyRes.data;
   const email = sanitizeText(body?.email, 254).toLowerCase();
   const source = sanitizeText(body?.source, 64) || "hero";
   const name = sanitizeText(body?.name, 120) || undefined;
@@ -154,8 +111,7 @@ export async function POST(req: NextRequest) {
         ok: true,
         alreadyRegistered: false,
         count,
-        message:
-          "You're on the list. We'll reach out when the next preview cohort opens.",
+        message: "You're on the list. We'll reach out within one business day.",
         requestId,
       },
       { headers: baseHeaders },
@@ -170,7 +126,7 @@ export async function POST(req: NextRequest) {
         ok: false,
         code: "DATABASE_UNAVAILABLE",
         error:
-          "Waitlist storage is temporarily unavailable. Please try again shortly.",
+          "Unable to record your registration right now. Please try again shortly.",
         requestId,
       },
       { status: 503, headers: baseHeaders },
@@ -193,7 +149,7 @@ export async function GET(req: NextRequest) {
       },
     );
   } catch (err) {
-    logger.error("subscribe.count_failed", {
+    logger.error("subscribe.count_error", {
       requestId,
       error: err instanceof Error ? err.message : "Database count failed",
     });
@@ -201,7 +157,7 @@ export async function GET(req: NextRequest) {
       {
         ok: false,
         code: "DATABASE_UNAVAILABLE",
-        error: "Unable to read waitlist count.",
+        error: "Waitlist count is temporarily unavailable.",
         requestId,
       },
       {

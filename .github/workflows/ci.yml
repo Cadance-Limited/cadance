@@ -37,8 +37,10 @@ jobs:
       - name: Install dependencies (frozen lockfile)
         run: bun install --frozen-lockfile
 
-      - name: Generate Prisma Client & apply migrations
+      - name: Validate SQLite & PostgreSQL Prisma schemas and apply migrations
         run: |
+          bunx prisma validate --schema prisma/schema.prisma
+          DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cadence" bunx prisma validate --schema prisma/schema.postgresql.prisma
           bun run db:generate
           bun run db:migrate:deploy
 
@@ -48,7 +50,7 @@ jobs:
       - name: Run ESLint
         run: bun run lint
 
-      - name: Run automated unit, SSRF & contract tests
+      - name: Run automated unit, SSRF, archive-bomb, RBAC & E2E tests
         run: npm test
 
       - name: Build production bundle

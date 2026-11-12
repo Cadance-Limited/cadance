@@ -1,14 +1,13 @@
-// Cadence Multi-Tenant Prisma Schema for Managed PostgreSQL (Neon, Supabase, AWS RDS)
-// To switch to PostgreSQL in production: cp prisma/schema.postgresql.prisma prisma/schema.prisma && bun run db:generate
+// Cadence Multi-Tenant Prisma Schema — PostgreSQL Production Target
+// Copy to prisma/schema.prisma when deploying against managed PostgreSQL (Neon, Supabase, RDS, Cloud SQL).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Waitlist {
@@ -24,30 +23,32 @@ model Waitlist {
 }
 
 model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  plan      String   @default("STARTER")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  plan        String            @default("STARTER") // STARTER | TEAM | SCALE
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
-  users     User[]
-  sessions  Session[]
-  runs      DiagnosticRun[]
-  auditLogs AuditLog[]
+  users       User[]
+  memberships WorkspaceMember[]
+  sessions    Session[]
+  runs        DiagnosticRun[]
+  auditLogs   AuditLog[]
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String            @id @default(cuid())
+  email        String            @unique
   name         String?
   passwordHash String
-  role         String   @default("OWNER")
+  role         String            @default("OWNER") // Default/primary role: OWNER | ADMIN | MEMBER | VIEWER
   workspaceId  String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
-  workspace    Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  memberships  WorkspaceMember[]
   sessions     Session[]
   runs         DiagnosticRun[]
   auditLogs    AuditLog[]
@@ -55,13 +56,28 @@ model User {
   @@index([workspaceId])
 }
 
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        String    @default("MEMBER") // OWNER | ADMIN | MEMBER | VIEWER
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
 model Session {
-  id          String   @id @default(cuid())
-  tokenHash   String   @unique
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
   userId      String
   workspaceId String
   expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -72,17 +88,17 @@ model Session {
 }
 
 model DiagnosticRun {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   workspaceId String
   userId      String?
-  runType     String
-  docType     String   @default("other")
+  runType     String    // CHAT | DOCUMENT
+  docType     String    @default("other")
   sourceTitle String
   sourceUrl   String?
-  mode        String
+  mode        String    // live_ai | deterministic_fallback
   summary     String
-  resultJson  String
-  createdAt   DateTime @default(now())
+  resultJson  String    // Serialized structured analysis or chat transcript
+  createdAt   DateTime  @default(now())
 
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -91,13 +107,13 @@ model DiagnosticRun {
 }
 
 model AuditLog {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   workspaceId  String
   userId       String?
   action       String
   metadataJson String?
   requestId    String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
   workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)

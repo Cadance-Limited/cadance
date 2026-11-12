@@ -1,15 +1,22 @@
-import crypto from "node:crypto";
+import net from "node:net";
 import { getEnv } from "./env";
 import { logger } from "./logger";
 
 /**
- * Production rate limiter implementing a true weighted sliding-window algorithm:
- * 1. Atomic distributed sliding-window rate limiting via Upstash Redis REST API when configured
- * 2. Trusted proxy IP resolution when TRUST_PROXY=true, and privacy-preserving per-client
- *    request fingerprint bucketing when TRUST_PROXY=false (never collapsing all visitors into a
- *    single global static bucket while still ignoring spoofed X-Forwarded-For headers)
- * 3. Explicit production failure policy: fails closed in production when ALLOW_IN_MEMORY_RATE_LIMIT=false
- *    and Redis is absent or unreachable
+ * Production rate limiter implementing a weighted sliding-window algorithm and
+ * non-spoofable client identification:
+ * 1. Atomic distributed sliding-window rate limiting via Upstash Redis REST API when configured.
+ * 2. Trusted client identification:
+ *    - Never uses attacker-controlled `User-Agent`, `Accept-Language`, or `Sec-CH-UA` headers
+ *      to mint rate-limit buckets.
+ *    - When `TRUST_PROXY=true`, resolves the verified client IP from an explicit `TRUSTED_IP_HEADER`,
+ *      platform-verified headers (`CF-Connecting-IP`, `X-Real-IP`, `X-Vercel-Forwarded-For`), or
+ *      right-to-left hop counting on `X-Forwarded-For` (`TRUSTED_PROXY_HOPS`, default 1) so clients
+ *      cannot spoof the leftmost `X-Forwarded-For` entry.
+ *    - When `TRUST_PROXY=false`, ignores all HTTP forwarding headers and falls back to the
+ *      non-spoofable `"unproxied-local"` bucket (or an authenticated `principalId` when provided).
+ * 3. Explicit production failure policy: fails closed in production when `ALLOW_IN_MEMORY_RATE_LIMIT=false`
+ *    and Redis is absent or unreachable.
  */
 
 type SlidingWindowState = {
@@ -34,52 +41,93 @@ export function resetRateLimitStoreForTests() {
   windows.clear();
 }
 
+function normalizeValidatedIp(raw: string | undefined | null): string | null {
+  if (!raw) return null;
+  let candidate = raw.trim();
+  if (!candidate) return null;
+  // Strip IPv6 brackets or port suffix if attached by proxy
+  if (candidate.startsWith("[") && candidate.includes("]")) {
+    candidate = candidate.slice(1, candidate.indexOf("]"));
+  } else if (
+    candidate.includes(":") &&
+    candidate.indexOf(":") === candidate.lastIndexOf(":")
+  ) {
+    const [hostPart, portPart] = candidate.split(":");
+    if (/^\d+$/.test(portPart ?? "")) {
+      candidate = hostPart;
+    }
+  }
+  return net.isIP(candidate) !== 0 ? candidate.toLowerCase() : null;
+}
+
 /**
- * Resolves the client identifier for rate limiting:
- * - When TRUST_PROXY=true, extracts the verified client IP from CF-Connecting-IP,
- *   X-Vercel-Forwarded-For, X-Real-IP, or X-Forwarded-For.
- * - When TRUST_PROXY=false, ignores spoofable IP forwarding headers completely and
- *   computes a deterministic hash from non-forwarding client headers (User-Agent,
- *   Accept-Language, Sec-CH-UA) so distinct browsers do not collide in a single bucket
- *   while an attacker cannot rotate X-Forwarded-For to bypass limits.
+ * Resolves the trusted client identifier for rate limiting:
+ * - If an authenticated `principalId` is supplied in `opts`, scopes the key to `principal:<id>`.
+ * - When `TRUST_PROXY=true`, extracts the verified client IP from:
+ *   1. `env.TRUSTED_IP_HEADER` (if explicitly configured for the deployment ingress)
+ *   2. `cf-connecting-ip`, `x-vercel-forwarded-for`, or `x-real-ip`
+ *   3. `x-forwarded-for` evaluated right-to-left using `env.TRUSTED_PROXY_HOPS` (default 1,
+ *      selecting the hop appended by the trusted ingress proxy rather than the client-spoofable leftmost item).
+ * - When `TRUST_PROXY=false`, ignores all forwarding and user-agent headers and returns `"unproxied-local"`.
  */
-export function getClientIp(headers: Headers): string {
+export function getClientIp(
+  headers: Headers,
+  opts?: { principalId?: string | null },
+): string {
+  if (opts?.principalId) {
+    return `principal:${opts.principalId}`;
+  }
+
   const env = getEnv();
-  if (env.TRUST_PROXY) {
-    const cfIp = headers.get("cf-connecting-ip")?.trim();
-    if (cfIp) return cfIp;
+  if (!env.TRUST_PROXY) {
+    return "unproxied-local";
+  }
 
-    const vercelIp = headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim();
-    if (vercelIp) return vercelIp;
-
-    const realIp = headers.get("x-real-ip")?.trim();
-    if (realIp) return realIp;
-
-    const forwarded = headers.get("x-forwarded-for");
-    if (forwarded) {
-      const first = forwarded.split(",")[0]?.trim();
-      if (first) return first;
+  if (env.TRUSTED_IP_HEADER) {
+    const customHeader = headers.get(env.TRUSTED_IP_HEADER);
+    if (customHeader) {
+      const parts = customHeader
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
+      const hopIdx = Math.max(0, parts.length - env.TRUSTED_PROXY_HOPS);
+      const validCustom = normalizeValidatedIp(parts[hopIdx]);
+      if (validCustom) return validCustom;
     }
   }
 
-  const ua = headers.get("user-agent")?.trim() ?? "";
-  const lang = headers.get("accept-language")?.trim() ?? "";
-  const chUa = headers.get("sec-ch-ua")?.trim() ?? "";
-  if (!ua && !lang && !chUa) {
-    return "direct-client";
+  const cfIp = normalizeValidatedIp(headers.get("cf-connecting-ip"));
+  if (cfIp) return cfIp;
+
+  const vercelIp = normalizeValidatedIp(
+    headers.get("x-vercel-forwarded-for")?.split(",")[0],
+  );
+  if (vercelIp) return vercelIp;
+
+  const realIp = normalizeValidatedIp(headers.get("x-real-ip"));
+  if (realIp) return realIp;
+
+  const forwarded = headers.get("x-forwarded-for");
+  if (forwarded) {
+    const ips = forwarded
+      .split(",")
+      .map((ip) => ip.trim())
+      .filter(Boolean);
+    if (ips.length > 0) {
+      const idx = Math.max(0, ips.length - env.TRUSTED_PROXY_HOPS);
+      const selected = normalizeValidatedIp(ips[idx]);
+      if (selected) return selected;
+    }
   }
-  const digest = crypto
-    .createHash("sha256")
-    .update(`${ua}|${lang}|${chUa}`)
-    .digest("hex")
-    .slice(0, 16);
-  return `client_${digest}`;
+
+  return "unverified-proxy-client";
 }
 
 export type RateLimitOptions = {
   namespace: string;
   limit: number;
   windowMs: number;
+  principalId?: string | null;
 };
 
 export type RateLimitResult = {
@@ -138,15 +186,20 @@ function checkInMemorySlidingWindow(
   }
 
   const elapsedInWindow = now - currentWindowStart;
-  const prevWeight = Math.max(0, (opts.windowMs - elapsedInWindow) / opts.windowMs);
-  const projectedCount = Math.floor(state.prevCount * prevWeight) + state.currCount + 1;
+  const prevWeight = Math.max(
+    0,
+    (opts.windowMs - elapsedInWindow) / opts.windowMs,
+  );
+  const projectedCount =
+    Math.floor(state.prevCount * prevWeight) + state.currCount + 1;
 
   const allowed = projectedCount <= opts.limit;
   if (allowed) {
     state.currCount += 1;
   }
 
-  const effectiveAfter = Math.floor(state.prevCount * prevWeight) + state.currCount;
+  const effectiveAfter =
+    Math.floor(state.prevCount * prevWeight) + state.currCount;
   const remaining = Math.max(0, opts.limit - effectiveAfter);
 
   return {
@@ -160,7 +213,6 @@ function checkInMemorySlidingWindow(
 
 /**
  * Distributed weighted sliding-window rate limiter using Upstash Redis REST pipeline.
- * Fetches the previous window's counter and atomically increments the current window's counter.
  */
 async function checkDistributedRedisSlidingWindow(
   redisUrl: string,
@@ -196,12 +248,17 @@ async function checkDistributedRedisSlidingWindow(
     throw new Error(`Redis rate-limit HTTP ${response.status}`);
   }
 
-  const data = (await response.json()) as Array<{ result?: string | number | null }>;
+  const data = (await response.json()) as Array<{
+    result?: string | number | null;
+  }>;
   const prevCount = Number(data?.[0]?.result ?? 0) || 0;
   const currCount = Number(data?.[1]?.result ?? 1) || 1;
 
   const elapsedInWindow = now - currentWindowStart;
-  const prevWeight = Math.max(0, (opts.windowMs - elapsedInWindow) / opts.windowMs);
+  const prevWeight = Math.max(
+    0,
+    (opts.windowMs - elapsedInWindow) / opts.windowMs,
+  );
   const effectiveCount = Math.floor(prevCount * prevWeight) + currCount;
 
   const allowed = effectiveCount <= opts.limit;
@@ -222,7 +279,7 @@ export async function checkRateLimit(
 ): Promise<RateLimitResult> {
   const now = Date.now();
   const env = getEnv();
-  const clientKey = getClientIp(reqHeaders);
+  const clientKey = getClientIp(reqHeaders, { principalId: opts.principalId });
   const key = `${opts.namespace}:${clientKey}`;
 
   if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {

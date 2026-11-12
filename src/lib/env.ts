@@ -9,6 +9,8 @@ export type AppEnv = {
   DATABASE_URL: string;
   NEXT_PUBLIC_APP_URL: string;
   TRUST_PROXY: boolean;
+  TRUSTED_PROXY_HOPS: number;
+  TRUSTED_IP_HEADER: string | null;
   UPSTASH_REDIS_REST_URL: string | null;
   UPSTASH_REDIS_REST_TOKEN: string | null;
   ALLOW_IN_MEMORY_RATE_LIMIT: boolean;
@@ -19,6 +21,14 @@ function parseBoolean(val: string | undefined, defaultVal = false): boolean {
   if (!val) return defaultVal;
   const norm = val.trim().toLowerCase();
   return norm === "1" || norm === "true" || norm === "yes";
+}
+
+function parsePositiveInt(val: string | undefined, defaultVal: number): number {
+  if (!val) return defaultVal;
+  const parsed = Number.parseInt(val.trim(), 10);
+  return Number.isFinite(parsed) && parsed >= 1 && parsed <= 10
+    ? parsed
+    : defaultVal;
 }
 
 export function getEnv(): AppEnv {
@@ -55,6 +65,9 @@ export function getEnv(): AppEnv {
     DATABASE_URL: dbUrl,
     NEXT_PUBLIC_APP_URL: appUrl,
     TRUST_PROXY: parseBoolean(process.env.TRUST_PROXY, false),
+    TRUSTED_PROXY_HOPS: parsePositiveInt(process.env.TRUSTED_PROXY_HOPS, 1),
+    TRUSTED_IP_HEADER:
+      process.env.TRUSTED_IP_HEADER?.trim().toLowerCase() || null,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL?.trim() || null,
     UPSTASH_REDIS_REST_TOKEN:
       process.env.UPSTASH_REDIS_REST_TOKEN?.trim() || null,

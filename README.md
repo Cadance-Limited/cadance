@@ -1,135 +1,70 @@
 # Cadence — The AI Operations Analyst
 
-Cadence is an interactive operations diagnostic application built with **Next.js 16 (App Router)**, **React 19**, **TypeScript**, **Tailwind CSS v4**, **shadcn/ui**, **Framer Motion**, and **Prisma**.
-
-It inspects operational questions and unstructured business documents (invoices, contracts, and Standard Operating Procedures), extracts key fields, flags anomalies (such as invoice arithmetic mismatches, undeclared surcharges, missing Purchase Order references, and Net-terms modifications), and outlines ranked next moves.
+Cadence is an AI operations analyst built for finance, procurement, and operations teams. It diagnoses operational bottlenecks from multi-turn conversations and business documents (invoices, vendor contracts, and Standard Operating Procedures), verifies invoice arithmetic programmatically, and persists workspace diagnostic runs and audit logs with Role-Based Access Control (RBAC).
 
 ---
 
-## Current Project Status & Scope
+## 1. Verified Capabilities vs. Planned Roadmap
 
-This repository is a hardened **technical preview and interactive product application**:
-
-- **Live in this repository today**:
-  - **Diagnostic Chat (`POST /api/chat`)**: Structured operational analysis (`Reasoning → Prescription → Open question`) with explicit separation of supplied user facts vs. assumptions, bounded retries with exponential backoff, and an automatic deterministic fallback engine when an external AI provider is not configured.
-  - **Document Intelligence (`POST /api/analyze`)**: Extracts structured fields, severity-ranked anomalies (`high` | `medium` | `low`), and prescriptions from pasted text or public HTTP/HTTPS URLs. Includes programmatic invoice `Subtotal + Tax == Total` verification and explicit mode attribution (`live_ai` vs. `deterministic_fallback`).
-  - **SSRF-Hardened URL Fetcher (`src/lib/security.ts`)**: Enforces `http:`/`https:` schemes on ports `80`/`443`, rejects embedded credentials, resolves DNS `A`/`AAAA` records to block loopback, RFC1918 private networks, link-local/cloud metadata (`169.254.169.254`), and IPv4-mapped IPv6 addresses, validates redirects hop-by-hop (`maxRedirects: 3`), restricts `Content-Type`, and caps response streams at `512 KB`.
-  - **Waitlist & Scale Interest Capture (`POST /api/subscribe`, `GET /api/subscribe`)**: Validated email registration stored via Prisma (`Waitlist` model) with versioned SQL migrations (`prisma/migrations/`). Returns honest `503 Service Unavailable` errors if storage is unreachable and never inflates registration counts with hardcoded baselines.
-  - **Application Security & Observability**: Sliding-window rate limiting (`src/lib/rate-limit.ts`) with optional Upstash Redis REST distributed backend, trusted-proxy IP verification (`TRUST_PROXY`), Content-Security-Policy (CSP) and HSTS headers (`next.config.ts`), and correlation-ID structured JSON logging (`src/lib/logger.ts`) with automatic PII and document-content redaction.
-- **Planned on the Roadmap (Not yet implemented)**:
-  - Direct binary file uploads (`PDF`, `DOCX`, `XLSX`)
-  - Native OAuth integrations with QuickBooks, NetSuite, DocuSign, and Slack
-  - User authentication, SSO (`SAML`/`OIDC`), SCIM provisioning, and multi-tenant RBAC workspaces
-  - Formal third-party SOC 2 Type II attestation
+| Capability | Status | Details |
+| :--- | :--- | :--- |
+| **Multi-Turn Diagnostic Chat (`/api/chat`)** | **Implemented** | Live LLM completions via `z-ai-web-dev-sdk` with bounded timeouts/retries and a non-hallucinating deterministic fallback engine (`src/lib/diagnostics-engine.ts`). |
+| **Document Intelligence (`/api/analyze`)** | **Implemented** | Accepts pasted text, uploaded files (`.pdf`, `.docx`, `.xlsx`, `.csv`, `.json`, `.html`, `.txt` up to `4 MB`), or public HTTP/HTTPS URLs; verifies `Subtotal + Tax == Total`. |
+| **Decompression Bomb & Stream Protection** | **Implemented** | `src/lib/file-parser.ts` enforces `maxOutputLength` (`2 MB`), `50:1` compression ratio caps, `4 MB` cumulative caps, and ZIP path-traversal rejection. `readBoundedJsonBody` enforces streaming body limits across all API routes. |
+| **DNS-Pinned SSRF Defense (`src/lib/security.ts`)** | **Implemented** | Blocks private, loopback, link-local, CGNAT, and cloud metadata IPv4/IPv6 ranges and pins the HTTP/HTTPS socket directly to the DNS-validated IP (`defaultPinnedTransport`). |
+| **Trusted Client Rate Limiting (`src/lib/rate-limit.ts`)** | **Implemented** | Weighted sliding-window limiter with right-to-left `X-Forwarded-For` hop resolution (`TRUSTED_PROXY_HOPS`), non-spoofable `"unproxied-local"` bucketing when `TRUST_PROXY=false`, and fail-closed production mode. |
+| **Transactional Multi-Tenant Auth & RBAC** | **Implemented** | Atomic registration via `db.$transaction`, `scrypt` password hashing with constant-time dummy verification, per-account login lockout, session rotation/revocation, and `WorkspaceMember` RBAC (`OWNER`, `ADMIN`, `MEMBER`, `VIEWER`). |
+| **OAuth ERP Connectors, SAML SSO/SCIM & SOC 2 Type II** | **Planned Roadmap** | Disclosed as planned roadmap items in the UI and documentation; not claimed as active in v0.2. |
 
 ---
 
-## Architecture Overview
+## 2. Quickstart (Local Development)
 
-```text
-cadence/
-├── .github/workflows/ci.yml      # Automated CI pipeline (install, migrate, typecheck, lint, test, build)
-├── prisma/
-│   ├── schema.prisma             # Waitlist model definition
-│   └── migrations/               # Version-controlled SQL migrations
-├── public/
-│   ├── logo.svg                  # Cadence pulse mark vector icon
-│   └── robots.txt                # Static crawler directives
-├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── route.ts          # GET/HEAD health & database readiness check
-│   │   │   ├── chat/route.ts     # POST diagnostic chat endpoint
-│   │   │   ├── analyze/route.ts  # POST document intelligence endpoint
-│   │   │   └── subscribe/route.ts# GET/POST waitlist persistence endpoint
-│   │   ├── globals.css           # Tailwind v4 design tokens, utilities & reduced-motion rules
-│   │   ├── layout.tsx            # Root layout, fonts, theme provider & canonical metadata
-│   │   ├── page.tsx              # Single-route landing & interactive application page
-│   │   ├── robots.ts             # Dynamic robots metadata route
-│   │   └── sitemap.ts            # Dynamic sitemap metadata route
-│   ├── components/
-│   │   ├── site/                 # Application sections, interactive demos, modals & navigation
-│   │   └── ui/                   # Reusable Radix / shadcn UI primitives
-│   ├── hooks/                    # Client hooks (count-up, mobile detection, toast, waitlist count)
-│   └── lib/
-│       ├── db.ts                 # Prisma client singleton
-│       ├── diagnostics-engine.ts # Deterministic fallback engine & LLM output schema normalizer
-│       ├── env.ts                # Centralized environment variable validation
-│       ├── logger.ts             # Structured JSON logger with PII/document redaction
-│       ├── prompt-bus.ts         # Cross-component event bus for demo tabs, prompts & counts
-│       ├── rate-limit.ts         # Distributed (Upstash Redis) & sliding-window rate limiter
-│       ├── security.ts           # SSRF URL/DNS validator, safe HTTP fetcher & input sanitizer
-│       ├── utils.ts              # Class-name merge helper
-│       └── zai.ts                # AI SDK client singleton with timeout & exponential backoff
-└── tests/                        # Automated unit, SSRF, API contract & frontend verification tests
-```
+### Prerequisites
+- **Bun** `>= 1.2` (canonical lockfile: `bun.lock`) or **Node.js** `>= 20`
 
----
-
-## Prerequisites & Local Development Setup
-
-### 1. Prerequisites
-- **Node.js** `v18.18+` or `v20+` (for running Next.js and the built-in Node test runner)
-- **Bun** `v1.2+` or **npm** `v9+`
-
-### 2. Install Dependencies
+### Setup
 ```bash
-bun install
-# or with npm:
-npm install
-```
+# 1. Install dependencies using the canonical lockfile
+bun install --frozen-lockfile
 
-### 3. Configure Environment Variables
-Copy `.env.example` to `.env`:
-```bash
+# 2. Copy environment configuration
 cp .env.example .env
-```
-By default, `.env.example` configures a local SQLite database at `file:./dev.db`.
 
-### 4. Initialize the Database
-Generate the Prisma client and apply the version-controlled migrations:
-```bash
-npx prisma generate
-npx prisma migrate deploy
-```
+# 3. Generate Prisma client and apply versioned SQLite migrations
+bun run db:generate
+bun run db:migrate:deploy
 
-### 5. Run the Development Server
-```bash
-npm run dev
-# or:
+# 4. Run typecheck, lint, and the 37-test automated suite
+bun run typecheck
+bun run lint
+npm test
+
+# 5. Start the development server on http://localhost:3000
 bun run dev
 ```
-Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Testing & Verification
+## 3. Environment Variables (`.env.example`)
 
-Run the automated test suite (covering SSRF protection, DNS validation, IP encodings, rate limiting, deterministic document extraction, arithmetic checks, prompt-injection sanitization, and frontend honesty/accessibility contracts):
-
-```bash
-npm test
-```
-
-Run static analysis and production build checks:
-
-```bash
-npm run typecheck
-npm run lint
-npm run build
-```
+| Variable | Required | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `DATABASE_URL` | **Yes (Prod)** | `file:./dev.db` (Dev) | Prisma database connection string (SQLite for single-node; PostgreSQL via `prisma/schema.postgresql.prisma` for multi-node). |
+| `NEXT_PUBLIC_APP_URL` | No | `https://cadence.ai` | Canonical base URL for metadata, `robots.txt`, and `sitemap.xml`. |
+| `TRUST_PROXY` | No | `false` | Set to `true` only when deployed behind a trusted reverse proxy that strips/overwrites forwarding headers. |
+| `TRUSTED_PROXY_HOPS` | No | `1` | Number of trusted reverse-proxy hops from the right of `X-Forwarded-For` when `TRUST_PROXY=true`. |
+| `TRUSTED_IP_HEADER` | No | *(unset)* | Optional explicit ingress header name (e.g. `cf-connecting-ip`) when `TRUST_PROXY=true`. |
+| `UPSTASH_REDIS_REST_URL` | **Yes (Multi-node)** | *(unset)* | Upstash Redis REST endpoint for distributed sliding-window rate limiting. |
+| `UPSTASH_REDIS_REST_TOKEN` | **Yes (Multi-node)** | *(unset)* | Upstash Redis REST bearer token. |
+| `ALLOW_IN_MEMORY_RATE_LIMIT` | No | `false` in Prod | Must be explicitly set to `true` for single-node production deployments without Redis; otherwise rate limiting fails closed in production. |
+| `LOG_LEVEL` | No | `info` | Structured JSON log level (`debug`, `info`, `warn`, `error`). |
 
 ---
 
-## Production Deployment Considerations
-
-1. **Database Persistence**:
-   - SQLite (`file:./dev.db`) is suitable only for local development or single-node persistent-disk deployments.
-   - For multi-instance or serverless deployments (e.g., Vercel, AWS ECS, Cloud Run), switch the Prisma `datasource db` provider in `prisma/schema.prisma` to `postgresql` and configure a managed PostgreSQL `DATABASE_URL`.
-   - Always run `npx prisma migrate deploy` during release pipelines rather than `prisma db push --accept-data-loss`.
-2. **Distributed Rate Limiting & Proxy Trust**:
-   - Configure `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` so rate limits are shared atomically across all instances.
-   - Set `TRUST_PROXY="true"` only when running behind a reverse proxy (Cloudflare, Vercel, ALB, Caddy) that strips untrusted client-supplied forwarding headers.
-3. **AI Provider Configuration**:
-   - When `z-ai-web-dev-sdk` credentials are configured, `/api/chat` and `/api/analyze` return `mode: "live_ai"`.
-   - If the external provider is unconfigured or unreachable, both endpoints gracefully fall back to `src/lib/diagnostics-engine.ts` and return `mode: "deterministic_fallback"` with a visible UI badge.
+## 4. Engineering Documentation (`docs/`)
+- [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) — Current engineering state, resolved defect inventory, and roadmap boundaries.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Security controls, streaming body enforcement, decompression limits, SSRF socket pinning, and RBAC model.
+- [`docs/ENGINEERING_DECISIONS.md`](docs/ENGINEERING_DECISIONS.md) — Architecture Decision Records (`ADR-001` through `ADR-005`).
+- [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md) — Readiness scorecard and single-node vs. multi-node deployment requirements.
+- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — Local workflow, schema validation, and database backup/restore runbook.

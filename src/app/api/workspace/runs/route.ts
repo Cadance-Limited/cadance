@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, ensureDatabaseReady } from "@/lib/db";
-import { getAuthenticatedSession } from "@/lib/auth";
+import {
+  getAuthenticatedSession,
+  hasWorkspacePermission,
+} from "@/lib/auth";
+import { readBoundedJsonBody } from "@/lib/security";
 import { getOrCreateRequestId, logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
+
+const MAX_DELETE_BODY_BYTES = 16 * 1024;
 
 export async function GET(req: NextRequest) {
   const requestId = getOrCreateRequestId(req?.headers);
@@ -27,6 +33,20 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  if (!hasWorkspacePermission(ctx.user.role, "runs:read")) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "FORBIDDEN",
+        error: "Your workspace role does not permit viewing diagnostic runs.",
+        requestId,
+      },
+      { status: 403, headers: { "X-Request-Id": requestId } },
+    );
+  }
+
+  const canReadAudit = hasWorkspacePermission(ctx.user.role, "audit:read");
+
   try {
     await ensureDatabaseReady();
     const [runs, auditLogs] = await Promise.all([
@@ -35,17 +55,21 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" },
         take: 25,
       }),
-      db.auditLog.findMany({
-        where: { workspaceId: ctx.workspace.id },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      }),
+      canReadAudit
+        ? db.auditLog.findMany({
+            where: { workspaceId: ctx.workspace.id },
+            orderBy: { createdAt: "desc" },
+            take: 20,
+          })
+        : Promise.resolve([]),
     ]);
 
     return NextResponse.json(
       {
         ok: true,
         workspace: ctx.workspace,
+        role: ctx.user.role,
+        permissions: ctx.user.permissions,
         runs: runs.map((r) => ({
           id: r.id,
           runType: r.runType,
@@ -105,13 +129,34 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  let runId = "";
-  try {
-    const body = await req.json();
-    runId = typeof body?.runId === "string" ? body.runId.trim() : "";
-  } catch {
-    /* ignore */
+  if (!hasWorkspacePermission(ctx.user.role, "runs:delete")) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "FORBIDDEN",
+        error:
+          "Only workspace OWNER or ADMIN roles can delete saved diagnostic runs.",
+        requestId,
+      },
+      { status: 403, headers: { "X-Request-Id": requestId } },
+    );
   }
+
+  const bodyRes = await readBoundedJsonBody(req, MAX_DELETE_BODY_BYTES);
+  if (!bodyRes.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: bodyRes.code,
+        error: bodyRes.error,
+        requestId,
+      },
+      { status: bodyRes.status, headers: { "X-Request-Id": requestId } },
+    );
+  }
+
+  const runId =
+    typeof bodyRes.data.runId === "string" ? bodyRes.data.runId.trim() : "";
 
   if (!runId) {
     return NextResponse.json(

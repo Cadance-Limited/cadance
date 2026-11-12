@@ -1,19 +1,19 @@
 # Cadence — Production Readiness Assessment
 
-**Assessment Date**: 2026-11-12  
-**Target Scope**: Technical Preview & Single-Instance Production Deployment (Multi-Instance Ready with PostgreSQL + Upstash Redis)
+## 1. Readiness Summary
 
----
+Cadence is ready for **single-node container/VPS production deployment** out of the box (using SQLite in WAL mode) and **multi-instance cloud deployment** when pointed at managed PostgreSQL (`prisma/schema.postgresql.prisma`) and Upstash Redis (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`).
 
-## 1. Dimension Scorecard & Evidence
+| Dimension | Status | Verification Evidence |
+| :--- | :--- | :--- |
+| **Build & CI Reproducibility** | **Ready** | `package.json` and `bun.lock` have 100% specifier parity (`tests/contracts.test.mjs`). Both `prisma/schema.prisma` and `prisma/schema.postgresql.prisma` are validated in `.github/workflows/ci.yml`. |
+| **Type Safety & Linting** | **Ready** | `next.config.ts` enforces `typescript.ignoreBuildErrors = false` and `reactStrictMode = true`. All `src/` files pass `tsc --noEmit` and `eslint`. |
+| **SSRF & Outbound Network Security** | **Ready** | `src/lib/security.ts` blocks private/loopback/link-local/CGNAT/metadata IPv4 & IPv6, pins socket connections to the DNS-validated IP (`defaultPinnedTransport`), and caps responses at `512 KB`. |
+| **Streaming Body & Archive Decompression Safety** | **Ready** | `readBoundedJsonBody` aborts oversized chunked streams mid-flight (`413`) even when `Content-Length` is spoofed. `src/lib/file-parser.ts` enforces `maxOutputLength` (`2 MB`), `50:1` compression ratio, `4 MB` cumulative cap, and path-traversal rejection. |
+| **Rate Limiting & Client Identification** | **Ready** | `src/lib/rate-limit.ts` uses weighted sliding windows, right-to-left `X-Forwarded-For` hop selection (`TRUSTED_PROXY_HOPS`) when `TRUST_PROXY=true`, non-spoofable `"unproxied-local"` bucketing when `TRUST_PROXY=false`, and fail-closed production enforcement. |
+| **Transactional Auth & Workspace RBAC** | **Ready** | Registration is atomic via `db.$transaction`. Login uses per-account lockout (`8` per `15m`) and constant-time dummy `scrypt` verification. `WorkspaceMember` enforces `OWNER`, `ADMIN`, `MEMBER`, and `VIEWER` permissions. |
+| **Product & Marketing Honesty** | **Ready** | Native file uploads (`.pdf`, `.docx`, `.xlsx`, `.csv`, `.json`, `.txt`) and multi-tenant workspaces with RBAC are implemented; third-party OAuth ERP connectors, SAML SSO/SCIM, and SOC 2 Type II certification remain clearly labeled as planned roadmap capabilities. |
 
-| Dimension | Status | Evidence & Implemented Controls | Known Limitations / Multi-Node Requirements |
-| :--- | :--- | :--- | :--- |
-| **Correctness** | **Ready** | All 28 frontend components and 4 API routes export and wire cleanly; `CommandPalette` (`⌘K`) synchronizes demo tabs and queued prompts; `GuidedTour` scroll recursion eliminated; invoice `Subtotal + Tax == Total` math verified programmatically. | Document intelligence currently accepts pasted text or public HTTP/HTTPS URLs; binary PDF/DOCX/XLSX parsing is planned. |
-| **Type Safety & Build** | **Ready** | `tsconfig.json` enforces `strict: true` and `noImplicitAny: true`; `next.config.ts` sets `reactStrictMode: true` and `ignoreBuildErrors: false`; `package.json` specifiers match `bun.lock` 100%. | None. |
-| **Security (SSRF & Headers)** | **Ready** | `src/lib/security.ts` enforces HTTP/HTTPS on ports 80/443, blocks all private/loopback/link-local/CGNAT/metadata IPv4 & IPv6 ranges (including `::ffff:` mapped and hex/octal/integer IPs), pins the resolved IP in `http`/`https` socket `lookup` (eliminating DNS rebinding TOCTOU), validates redirects hop-by-hop (`maxRedirects: 3`), and enforces CSP + HSTS headers. | Public demo processes submitted text transiently; users are advised not to paste regulated production secrets. |
-| **Rate Limiting & Abuse** | **Ready** | `src/lib/rate-limit.ts` implements weighted sliding-window limits (`/api/chat`: 30/min, `/api/analyze`: 20/min, `/api/subscribe`: 15/min), ignores spoofed `X-Forwarded-For` when `TRUST_PROXY=false`, supports Upstash Redis REST pipelines, and fails closed in production when `ALLOW_IN_MEMORY_RATE_LIMIT=false`. | Multi-instance horizontal scaling requires setting `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. |
-| **AI & Fallback Integrity** | **Ready** | Untrusted document inputs are sanitized and wrapped in `<untrusted_document>` XML boundaries; LLM outputs are normalized through `normalizeAnalysisPayload()`; deterministic fallback never invents hours recovered; UI badges `Live AI` vs. `Deterministic rule engine`. | Live AI mode requires valid `z-ai-web-dev-sdk` runtime credentials. |
-| **Database & Migrations** | **Ready (Single-Node)** | Versioned SQL migration in `prisma/migrations/20261111000000_init/migration.sql`; SQLite `WAL` mode and `busy_timeout = 5000` configured in `src/lib/db.ts`; honest `503` errors on storage failure; zero fabricated baseline counts. | SQLite is a single-node file database; multi-instance cloud deployments must switch `prisma/schema.prisma` to `postgresql`. |
-| **Testing & CI/CD** | **Ready** | 32 automated tests in `tests/*.test.mjs` covering SSRF, TOCTOU IP pinning, sliding-window rate limiting, API error contracts, lockfile parity, and AST/import validation; `.github/workflows/ci.yml` runs on push and PR. | Browser E2E tests (Playwright) can be added as multi-route authenticated workflows are introduced. |
-| **Product Honesty** | **Ready** | Removed all fictional customer logos, fabricated testimonials, unverified pilot percentages, and premature `SOC 2 Type II achieved` claims; labeled ERP connectors and enterprise SSO/SOC 2 items as planned roadmap items. | None. |
+## 2. Explicit Scope Boundaries & Operational Requirements
+1. **Scanned / Image-Only PDFs (OCR)**: `src/lib/file-parser.ts` extracts text from digital text-stream PDFs (`FlateDecode` + `Tj`/`TJ`). Scanned image-only PDFs without embedded text streams return `422 Unprocessable Entity` with a clear message instructing the user to supply a text-based PDF or paste text.
+2. **Multi-Instance Deployment Requirements**: Before scaling horizontally beyond 1 instance, operators must switch `prisma/schema.prisma` to `prisma/schema.postgresql.prisma`, set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, set `ALLOW_IN_MEMORY_RATE_LIMIT=false`, and configure `TRUST_PROXY=true` with the correct `TRUSTED_PROXY_HOPS` count for their load balancer.

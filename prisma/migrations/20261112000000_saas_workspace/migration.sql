@@ -1,4 +1,4 @@
--- CreateTable
+-- CreateTable: Workspace
 CREATE TABLE "Workspace" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
@@ -8,7 +8,7 @@ CREATE TABLE "Workspace" (
     "updatedAt" DATETIME NOT NULL
 );
 
--- CreateTable
+-- CreateTable: User
 CREATE TABLE "User" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "email" TEXT NOT NULL,
@@ -21,7 +21,19 @@ CREATE TABLE "User" (
     CONSTRAINT "User_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- CreateTable
+-- CreateTable: WorkspaceMember
+CREATE TABLE "WorkspaceMember" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "workspaceId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "role" TEXT NOT NULL DEFAULT 'MEMBER',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "WorkspaceMember_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "WorkspaceMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable: Session
 CREATE TABLE "Session" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "tokenHash" TEXT NOT NULL,
@@ -33,7 +45,7 @@ CREATE TABLE "Session" (
     CONSTRAINT "Session_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- CreateTable
+-- CreateTable: DiagnosticRun
 CREATE TABLE "DiagnosticRun" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "workspaceId" TEXT NOT NULL,
@@ -50,7 +62,7 @@ CREATE TABLE "DiagnosticRun" (
     CONSTRAINT "DiagnosticRun_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
--- CreateTable
+-- CreateTable: AuditLog
 CREATE TABLE "AuditLog" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "workspaceId" TEXT NOT NULL,
@@ -65,27 +77,13 @@ CREATE TABLE "AuditLog" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Workspace_slug_key" ON "Workspace"("slug");
-
--- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
-
--- CreateIndex
 CREATE INDEX "User_workspaceId_idx" ON "User"("workspaceId");
-
--- CreateIndex
+CREATE UNIQUE INDEX "WorkspaceMember_workspaceId_userId_key" ON "WorkspaceMember"("workspaceId", "userId");
+CREATE INDEX "WorkspaceMember_userId_idx" ON "WorkspaceMember"("userId");
 CREATE UNIQUE INDEX "Session_tokenHash_key" ON "Session"("tokenHash");
-
--- CreateIndex
 CREATE INDEX "Session_userId_idx" ON "Session"("userId");
-
--- CreateIndex
 CREATE INDEX "Session_workspaceId_idx" ON "Session"("workspaceId");
-
--- CreateIndex
 CREATE INDEX "Session_expiresAt_idx" ON "Session"("expiresAt");
-
--- CreateIndex
 CREATE INDEX "DiagnosticRun_workspaceId_createdAt_idx" ON "DiagnosticRun"("workspaceId", "createdAt");
-
--- CreateIndex
 CREATE INDEX "AuditLog_workspaceId_createdAt_idx" ON "AuditLog"("workspaceId", "createdAt");

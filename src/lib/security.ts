@@ -661,3 +661,126 @@ export function sanitizeUntrustedDocument(
       "[token_removed]",
     );
 }
+
+export type BoundedBodyResult<T> =
+  | { ok: true; data: T; rawText: string; byteLength: number }
+  | {
+      ok: false;
+      status: 400 | 413;
+      code: "PAYLOAD_TOO_LARGE" | "INVALID_BODY" | "INVALID_JSON";
+      error: string;
+    };
+
+/**
+ * Streaming request body reader that enforces `maxBytes` chunk-by-chunk on the underlying
+ * ReadableStream (`req.body.getReader()`). Prevents memory exhaustion when `Content-Length`
+ * is omitted, chunked, or spoofed.
+ */
+export async function readBoundedTextBody(
+  req: Request,
+  maxBytes: number,
+): Promise<
+  | { ok: true; rawText: string; byteLength: number }
+  | {
+      ok: false;
+      status: 400 | 413;
+      code: "PAYLOAD_TOO_LARGE" | "INVALID_BODY";
+      error: string;
+    }
+> {
+  const declaredLength = Number(req.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    return {
+      ok: false,
+      status: 413,
+      code: "PAYLOAD_TOO_LARGE",
+      error: `Request payload exceeds the ${Math.round(maxBytes / 1024)} KB limit.`,
+    };
+  }
+
+  if (!req.body) {
+    return { ok: true, rawText: "", byteLength: 0 };
+  }
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        totalBytes += value.byteLength;
+        if (totalBytes > maxBytes) {
+          await reader.cancel().catch(() => {});
+          return {
+            ok: false,
+            status: 413,
+            code: "PAYLOAD_TOO_LARGE",
+            error: `Request payload exceeds the ${Math.round(maxBytes / 1024)} KB limit.`,
+          };
+        }
+        chunks.push(value);
+      }
+    }
+  } catch {
+    return {
+      ok: false,
+      status: 400,
+      code: "INVALID_BODY",
+      error: "Unable to read request body stream.",
+    };
+  }
+
+  const combined = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  const rawText = new TextDecoder("utf-8", { fatal: false }).decode(combined);
+  return { ok: true, rawText, byteLength: totalBytes };
+}
+
+export async function readBoundedJsonBody<
+  T = Record<string, unknown>,
+>(req: Request, maxBytes: number): Promise<BoundedBodyResult<T>> {
+  const textRes = await readBoundedTextBody(req, maxBytes);
+  if (!textRes.ok) return textRes;
+
+  if (!textRes.rawText.trim()) {
+    return {
+      ok: false,
+      status: 400,
+      code: "INVALID_JSON",
+      error: "Request body must be a non-empty JSON object.",
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(textRes.rawText);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {
+        ok: false,
+        status: 400,
+        code: "INVALID_JSON",
+        error: "Request body must be a JSON object.",
+      };
+    }
+    return {
+      ok: true,
+      data: parsed as T,
+      rawText: textRes.rawText,
+      byteLength: textRes.byteLength,
+    };
+  } catch {
+    return {
+      ok: false,
+      status: 400,
+      code: "INVALID_JSON",
+      error: "Request body must be valid JSON.",
+    };
+  }
+}

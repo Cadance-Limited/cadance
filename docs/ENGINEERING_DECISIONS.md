@@ -1,21 +1,24 @@
-# Cadence — Engineering Decisions (ADR Log)
+# Cadence — Engineering Decisions (ADRs)
 
-## ADR-001: Canonical Package Manager (`bun.lock`)
-- **Context**: The repository contained `bun.lock` as well as references to npm scripts using Unix-only pipes (`2>&1 | tee dev.log`), and an accidental version mismatch on `@radix-ui/react-select` (`^1.2.5` vs `^2.2.5`).
-- **Decision**: Standardize on **Bun** (`bun.lock`) as the canonical lockfile for CI (`bun install --frozen-lockfile`), ignore `package-lock.json` in `.gitignore`, remove Unix-only `tee` pipes from `package.json` scripts so both `bun run` and `npm run` work on Windows PowerShell and Linux, and enforce lockfile parity in `tests/contracts.test.mjs`.
+## ADR-001: Canonical Package Manager & Lockfile Parity (`bun.lock`)
+- **Context**: The repository contained a `bun.lock` lockfile alongside `.github/workflows/ci.yml` configured with `bun install --frozen-lockfile`, while `package.json` had drifted on `@radix-ui/react-select`.
+- **Decision**: Standardize on `bun.lock` as the single committed lockfile, ignore `package-lock.json` in `.gitignore`, and enforce 100% dependency specifier parity between `package.json` and `bun.lock` via `tests/contracts.test.mjs`.
 
-## ADR-002: Eliminating DNS Rebinding TOCTOU via Socket-Level IP Pinning
-- **Context**: Validating a domain's DNS records via `dns.lookup()` and subsequently passing the URL to global `fetch()` leaves a time-of-check/time-of-use (TOCTOU) window where a malicious DNS server with `TTL=0` can return a public IP on the first lookup and `127.0.0.1` or `169.254.169.254` when `fetch()` opens its socket. Furthermore, delegating URL fetching to `zai.functions.invoke("page_reader")` outsourced network egress to an unverified external service.
-- **Decision**: Remove external `page_reader` delegation and implement `defaultPinnedTransport` in `src/lib/security.ts` using Node's native `http.request` / `https.request` with a custom `lookup` callback that directly supplies the validated `pinnedAddress` and `pinnedFamily` while preserving `servername: parsedUrl.hostname` for TLS SNI and certificate verification.
+## ADR-002: Socket-Level DNS Pinning for Outbound URL Fetching
+- **Context**: Validating DNS via `dns.lookup` before calling global `fetch(url)` leaves a Time-of-Check to Time-of-Use (TOCTOU) window for `TTL=0` DNS rebinding attacks.
+- **Decision**: Implement `defaultPinnedTransport` using Node's `http.request` and `https.request` with a custom `lookup` callback that returns the exact IP address validated by `resolveAndValidateHost()`, while passing `servername: parsedUrl.hostname` for TLS SNI verification.
 
-## ADR-003: Weighted Sliding-Window Rate Limiting & Non-Colliding Client Keys
-- **Context**: Fixed time buckets allow up to `2x` the configured rate limit across window boundaries, and returning a static `"direct-client"` string when `TRUST_PROXY=false` placed all unproxied visitors into one shared bucket.
-- **Decision**: Implement a weighted sliding-window counter across `(prevWindow, currWindow)` in both in-memory and Upstash Redis modes, compute a SHA-256 request-header fingerprint (`client_<16-hex>`) when `TRUST_PROXY=false`, and fail closed in production when `ALLOW_IN_MEMORY_RATE_LIMIT=false` and Redis is unavailable.
+## ADR-003: Non-Spoofable Client Identification & Weighted Sliding-Window Rate Limiting
+- **Context**: Hashing `User-Agent` and `Accept-Language` when `TRUST_PROXY=false` allowed attackers to bypass rate limits by rotating HTTP headers, while taking `X-Forwarded-For.split(",")[0]` when `TRUST_PROXY=true` allowed attackers to prepend spoofed IPs.
+- **Decision**:
+  1. Never use client-controlled `User-Agent`/`Accept-Language` headers for rate-limit bucketing.
+  2. When `TRUST_PROXY=false`, map unauthenticated requests to `"unproxied-local"` (and authenticated or account-targeted requests to `principal:<id>`).
+  3. When `TRUST_PROXY=true`, resolve `X-Forwarded-For` from right to left using `TRUSTED_PROXY_HOPS` (default `1`).
 
-## ADR-004: Non-Hallucinating Deterministic Fallback & Explicit Mode Attribution
-- **Context**: An AI operations analyst must remain testable in environments without live LLM credentials, but must never fabricate hours recovered (`~6.2 hrs/week`), historical baselines, or unverified industry statistics.
-- **Decision**: `src/lib/diagnostics-engine.ts` performs deterministic regex/heuristic field extraction and programmatic invoice arithmetic checks (`Subtotal + Tax == Total`), sets `estHoursRecovered: null` unless explicitly present in the document, and returns `mode: "deterministic_fallback"` vs. `mode: "live_ai"` so both `DemoChat` and `DemoDocs` display an explicit mode badge.
+## ADR-004: Bounded Streaming Body & Archive Decompression Limits
+- **Context**: Checking `req.headers.get("content-length")` before `await req.text()` fails when `Content-Length` is omitted or spoofed on chunked streams, and unbounded `zlib.inflateRawSync` is vulnerable to ZIP/PDF decompression bombs.
+- **Decision**: Enforce streaming byte caps chunk-by-chunk via `readBoundedJsonBody` (`req.body.getReader()`) across all API routes, and enforce `maxOutputLength` (`2 MB`), cumulative uncompressed caps (`4 MB`), compression ratio limits (`50:1`), and path traversal rejection in `src/lib/file-parser.ts`.
 
-## ADR-005: Honest Waitlist Persistence & Error Reporting
-- **Context**: `/api/subscribe` previously added a hardcoded `BASE_WAITLIST_COUNT = 412` and silently fell back to an in-memory map on database errors, returning `200 OK` even when persistence failed.
-- **Decision**: Remove `BASE_WAITLIST_COUNT = 412` and remove the in-memory waitlist fallback. `/api/subscribe` queries only Prisma (`db.waitlist`), initializes SQLite WAL concurrency pragmas (`ensureDatabaseReady()`), and returns HTTP `503 Service Unavailable` (`code: "DATABASE_UNAVAILABLE"`) if the database is unreachable.
+## ADR-005: Transactional Multi-Tenant Auth & `WorkspaceMember` RBAC
+- **Context**: Non-transactional workspace/user creation risked orphaned rows on partial failure, and flat `user.role` fields lacked multi-workspace membership and granular permission checks.
+- **Decision**: Wrap workspace registration and member mutations in `db.$transaction(...)`, add the `WorkspaceMember` join table with `OWNER`, `ADMIN`, `MEMBER`, and `VIEWER` roles, enforce permissions across `/api/chat`, `/api/analyze`, `/api/workspace/runs`, and `/api/workspace/members`, and maintain 100% schema parity between `prisma/schema.prisma` (SQLite) and `prisma/schema.postgresql.prisma` (PostgreSQL).

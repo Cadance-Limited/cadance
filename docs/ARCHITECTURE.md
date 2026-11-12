@@ -1,59 +1,55 @@
-# Cadence — System Architecture
+# Cadence — Architecture & Security Reference
 
-## 1. High-Level Architecture
+## 1. System Overview
 
-Cadence is a Next.js 16 (App Router) full-stack TypeScript application. Both the interactive frontend and the JSON API endpoints are served from a unified Node.js runtime (`export const runtime = "nodejs"`).
+Cadence is a Next.js 16 (App Router) and TypeScript application that provides operational diagnostics and document extraction with a deterministic non-hallucinating fallback engine and multi-tenant workspace persistence.
 
-```text
-Browser Client (React 19 + Tailwind v4 + Framer Motion)
-  │
-  ├─► GET  /                        → SSR/Client Landing & Interactive Application (src/app/page.tsx)
-  ├─► POST /api/chat                → Diagnostic Analyst Endpoint (src/app/api/chat/route.ts)
-  ├─► POST /api/analyze             → Document Intelligence Endpoint (src/app/api/analyze/route.ts)
-  ├─► GET/POST /api/subscribe       → Waitlist Persistence Endpoint (src/app/api/subscribe/route.ts)
-  └─► GET/HEAD /api                 → Health & Database Readiness Endpoint (src/app/api/route.ts)
+```
+Browser Client (React 19 + Tailwind v4 + Radix UI)
+  ├── Diagnostic Chat UI (src/components/site/demo-chat.tsx)
+  │     └── POST /api/chat ──► Streaming Body Limit (64 KB) ──► Rate Limiter ──► Sanitizer ──► Z-AI / Deterministic Engine
+  ├── Document Intelligence UI (src/components/site/demo-docs.tsx)
+  │     └── POST /api/analyze ──► Streaming Body Limit (6 MB) ──► Rate Limiter ──►
+  │           ├── File Upload Mode: Hardened Parser (.pdf, .docx, .xlsx, .csv, .json, .txt; zip/PDF bomb caps)
+  │           ├── URL Mode: DNS-Pinned SSRF Fetcher (src/lib/security.ts -> defaultPinnedTransport)
+  │           └── Text Mode: Sanitizer ──► Z-AI / Deterministic Engine (Invoice Math Verification)
+  ├── Workspace & RBAC Modal (src/components/site/workspace-modal.tsx)
+  │     ├── GET/POST/PATCH/DELETE /api/auth/session (Transactional Registration, scrypt, Session Rotation/Revocation)
+  │     ├── GET/DELETE /api/workspace/runs (RBAC-enforced Run History & Audit Logs)
+  │     └── GET/POST/PATCH/DELETE /api/workspace/members (RBAC Member Management: OWNER, ADMIN, MEMBER, VIEWER)
+  └── Waitlist & Health
+        ├── GET & POST /api/subscribe ──► Prisma Waitlist Model
+        └── GET /api ──► Prisma SELECT 1 Healthcheck
 ```
 
----
+## 2. Core Security Controls
 
-## 2. Security & Outbound Fetching Architecture (`src/lib/security.ts`)
+### 2.1 Decompression Bomb & Malicious Archive Defense (`src/lib/file-parser.ts`)
+`parseUploadedDocument` extracts text using Node's built-in `node:zlib` with strict resource bounds:
+- **Raw Upload Cap**: `MAX_UPLOAD_BYTES = 4 MB`.
+- **Per-Stream / Per-Entry Cap**: `MAX_SINGLE_ENTRY_UNCOMPRESSED_BYTES = 2 MB` passed directly to `zlib.inflateSync` / `zlib.inflateRawSync({ maxOutputLength })` so decompression aborts inside native C++ zlib before allocating oversized buffers.
+- **Compression Ratio Cap**: `MAX_COMPRESSION_RATIO = 50` (any PDF stream or ZIP entry expanding beyond `50:1` is rejected with `413`).
+- **Cumulative Output & Entry Caps**: `MAX_TOTAL_UNCOMPRESSED_BYTES = 4 MB`, `MAX_ARCHIVE_ENTRIES = 64`, and `MAX_PDF_STREAMS = 64`.
+- **Path Traversal & Encryption Rejection**: Rejects ZIP entry names containing `..`, leading `/` or `\`, Windows drive letters, or null bytes (`400`), and rejects encrypted (`flags & 0x01`), streaming unknown-size (`flags & 0x08` with `compressedSize === 0`), or ZIP64 entries.
 
-Because `/api/analyze` accepts user-supplied URLs to fetch public vendor agreements or SOPs, outbound HTTP fetching is a critical trust boundary:
+### 2.2 Streaming Request Body Enforcement (`src/lib/security.ts`)
+All mutating API routes (`/api/chat`, `/api/analyze`, `/api/subscribe`, `/api/auth/session`, `/api/workspace/runs`, `/api/workspace/members`) read request bodies via `readBoundedJsonBody(req, maxBytes)`:
+- Inspects `Content-Length` upfront when present.
+- Reads `req.body.getReader()` chunk-by-chunk, accumulating `totalBytes`.
+- Immediately cancels the stream and returns `413 PAYLOAD_TOO_LARGE` the moment cumulative bytes exceed `maxBytes`, even when `Content-Length` is omitted or spoofed.
 
-1. **Structural Validation (`validateExternalUrl`)**:
-   - Permits only `http:` and `https:` protocols on standard ports (`80` and `443`).
-   - Rejects embedded credentials (`user:pass@host`), control characters, single-label internal hostnames, internal TLDs (`.local`, `.internal`, `.localhost`, `.lan`, `.home`, `.corp`), and non-standard numeric IP encodings (octal `0177.0.0.1`, hex `0x7f000001`, integer `2130706433`).
-2. **Comprehensive IP Blocklist (`isReservedOrPrivateIp`)**:
-   - Blocks IPv4 loopback (`127.0.0.0/8`), unspecified (`0.0.0.0/8`), RFC1918 private (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local / cloud metadata (`169.254.0.0/16`), CGNAT (`100.64.0.0/10`), benchmarking (`198.18.0.0/15`), TEST-NETs, and multicast/reserved (`>= 224.0.0.0`).
-   - Blocks IPv6 loopback (`::1`), unspecified (`::`), unique local (`fc00::/7`), link-local (`fe80::/10`), multicast (`ff00::/8`), documentation (`2001:db8::/32`), 6to4/Teredo, and IPv4-mapped IPv6 addresses (`::ffff:127.0.0.1`, `::ffff:7f00:0001`).
-3. **TOCTOU-Safe DNS Resolution & Socket Pinning (`resolveAndValidateHost` + `defaultPinnedTransport`)**:
-   - Resolves all `A` and `AAAA` records via `dns.lookup(hostname, { all: true, verbatim: true })` and rejects the domain if **any** record resolves to a private or reserved address.
-   - Instead of calling global `fetch()` (which would perform a second independent DNS lookup vulnerable to short-TTL DNS rebinding), `defaultPinnedTransport` invokes Node's `http.request` / `https.request` with a custom `lookup` callback that returns the exact validated `pinnedAddress` and `pinnedFamily`, while passing `servername: parsedUrl.hostname` for TLS SNI and certificate hostname verification.
-4. **Redirect, Size & Content-Type Enforcement (`safeFetchExternalUrl`)**:
-   - Redirects are never followed automatically; each `3xx` `Location` target is resolved and re-validated through `validateExternalUrl` and `resolveAndValidateHost` up to `maxRedirects: 3`.
-   - Enforces an `8,000 ms` socket timeout, a `512 KB` streaming response cap, and an explicit `Content-Type` allowlist (`text/html`, `text/plain`, `application/xhtml+xml`, `application/xml`, `text/xml`, `text/markdown`).
+### 2.3 Trusted Client Identification & Sliding-Window Rate Limiting (`src/lib/rate-limit.ts`)
+- **No Rotatable Header Fingerprinting**: `getClientIp()` never hashes `User-Agent`, `Accept-Language`, or `Sec-CH-UA` headers (which an attacker can rotate per request).
+- **When `TRUST_PROXY=false` (Default)**: Ignores all forwarding headers (`X-Forwarded-For`, `X-Real-IP`, `CF-Connecting-IP`) and maps unauthenticated traffic to `"unproxied-local"`, or `principal:<id>` when scoped to an account/session.
+- **When `TRUST_PROXY=true`**: Extracts the verified IP from `TRUSTED_IP_HEADER` (if set), `CF-Connecting-IP`, `X-Vercel-Forwarded-For`, `X-Real-IP`, or `X-Forwarded-For` evaluated **right-to-left** using `TRUSTED_PROXY_HOPS` (default `1`) so clients cannot spoof the leftmost `X-Forwarded-For` entry.
+- **Weighted Sliding Window & Fail-Closed Production Policy**: Prevents 2x boundary bursts across `(prevWindow, currWindow)` and fails closed (`allowed: false`) in `NODE_ENV=production` when `ALLOW_IN_MEMORY_RATE_LIMIT=false` and Upstash Redis is absent or unreachable.
 
----
-
-## 3. Rate Limiting Architecture (`src/lib/rate-limit.ts`)
-
-1. **Weighted Sliding-Window Algorithm**:
-   - Tracks both the previous window (`prevCount`) and current window (`currCount`), computing:
-     `effectiveCount = Math.floor(prevCount * ((windowMs - elapsedInCurrentWindow) / windowMs)) + currCount`
-   - Prevents the `2x` boundary burst vulnerability inherent in fixed-window counters.
-2. **Client Identification (`getClientIp`)**:
-   - When `TRUST_PROXY="true"`, reads `cf-connecting-ip`, `x-vercel-forwarded-for`, `x-real-ip`, or `x-forwarded-for`.
-   - When `TRUST_PROXY="false"`, ignores all spoofable IP forwarding headers and derives a deterministic SHA-256 fingerprint (`client_<16-hex>`) from `User-Agent`, `Accept-Language`, and `Sec-CH-UA` so distinct clients are isolated without trusting spoofed headers.
-3. **Storage & Production Failure Policy**:
-   - Uses Upstash Redis REST pipeline (`GET prevKey`, `INCR currKey`, `PEXPIRE currKey`) when `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set.
-   - If `NODE_ENV === "production"` and `ALLOW_IN_MEMORY_RATE_LIMIT === false`, missing or unreachable Redis fails closed (`allowed: false`, HTTP `429`) rather than silently degrading to per-process memory.
-
----
-
-## 4. Database Architecture (`prisma/schema.prisma`, `src/lib/db.ts`)
-
-- **Single-Instance / Local Target (Default)**:
-  - Uses SQLite (`DATABASE_URL="file:./dev.db"`).
-  - `ensureDatabaseReady()` configures `PRAGMA journal_mode = WAL;`, `PRAGMA busy_timeout = 5000;`, and `PRAGMA synchronous = NORMAL;` so concurrent requests on a single container/VM serialize cleanly without `SQLITE_BUSY` errors.
-- **Multi-Instance / Serverless Target**:
-  - Update `provider = "postgresql"` in `prisma/schema.prisma`, point `DATABASE_URL` to a managed PostgreSQL instance (with connection pooling such as PgBouncer), and run `bun run db:migrate:deploy`.
+### 2.4 Transactional Auth Lifecycle & Workspace RBAC (`src/lib/auth.ts`, `src/app/api/auth/session/route.ts`, `src/app/api/workspace/`)
+- **Atomic Registration**: `POST /api/auth/session` (`action: "register"`) executes `workspace.create`, `user.create`, `workspaceMember.create` (`role: "OWNER"`), `session.create`, and `auditLog.create` inside `db.$transaction(...)` so partial failures roll back cleanly without orphaned workspaces.
+- **Timing-Safe Login & Per-Account Lockout**: Login enforces a per-account rate limit (`8` attempts per `15` minutes on `principalId: email`) and runs `verifyPasswordAgainstDummy(password)` when an email is not found so response timing is invariant.
+- **Session Rotation & Revocation**: `PATCH /api/auth/session` rotates the user's password and revokes all other active sessions (`revokeAllUserSessions(userId, currentSessionId)`); `DELETE /api/auth/session?scope=all` revokes all active sessions across devices.
+- **Role-Based Access Control (RBAC)**: Backed by `WorkspaceMember` (`@@unique([workspaceId, userId])`) with 4 roles:
+  - `VIEWER`: `runs:read`, `members:read`
+  - `MEMBER`: `runs:read`, `runs:write`, `members:read`
+  - `ADMIN`: `runs:read`, `runs:write`, `runs:delete`, `audit:read`, `members:read`, `members:manage`
+  - `OWNER`: all permissions including `workspace:manage` and sole-owner demotion/removal protection (`LAST_OWNER_PROTECTED`).
