@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 /**
  * Portable TypeScript test compiler helper:
@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const require = createRequire(import.meta.url);
-const cacheDir = path.join(repoRoot, ".test-build");
+const cacheDir = path.join(repoRoot, ".test-build", `worker-${process.pid}`);
 
 process.on("exit", () => {
   try {
@@ -292,12 +292,12 @@ export async function loadTsModule(relPathFromRoot) {
   if (relPathFromRoot === "src/app/api/auth/session/route.ts") targetFile = "route-auth-session.mjs";
   if (relPathFromRoot === "src/app/api/workspace/runs/route.ts") targetFile = "route-workspace-runs.mjs";
 
-  return import(path.join(dir, targetFile));
+  return import(pathToFileURL(path.join(dir, targetFile)).href);
 }
 
 export async function loadTestMocks() {
   const dir = ensureCompiledCache();
-  const zaiMock = await import(path.join(dir, "mock-zai-sdk.mjs"));
-  const prismaMock = await import(path.join(dir, "mock-prisma.mjs"));
+  const zaiMock = await import(pathToFileURL(path.join(dir, "mock-zai-sdk.mjs")).href);
+  const prismaMock = await import(pathToFileURL(path.join(dir, "mock-prisma.mjs")).href);
   return { zaiMock, prismaMock };
 }
